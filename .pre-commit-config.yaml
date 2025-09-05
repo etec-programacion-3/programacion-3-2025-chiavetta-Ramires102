@@ -1,0 +1,7 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0  # Última versión estable conocida (sep 2025)
+    hooks:
+      - id: end-of-file-fixer         # Asegura una línea en blanco al final de cada archivo
+      - id: check-yaml                # Valida sintaxis de archivos YAML
+      - id: check-added-large-files   # Avisa si estás añadiendo archivos grandes (por defecto >500kB)
