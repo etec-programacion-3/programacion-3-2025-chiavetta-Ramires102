@@ -1,9 +1,5 @@
 ### alumno: Pablo Chiavetta
 
-# Tecnologias
-- Python
-- FastAPI
-- Ruff
 
 
 ## como funciona

@@ -23,6 +23,7 @@ class DatabaseManager:
             nombre TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             edad INTEGER,
+            contraseña TEXT NOT NULL,
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         )
         '''
@@ -44,3 +45,27 @@ class DatabaseManager:
         self.cursor.execute(query)
         self.conn.commit()
         print("Tabla 'musculacion' creada exitosamente")
+
+    def inicializar_base_datos(self):
+        print("Inicializando base de datos...")
+        self.crear_tabla_usuarios()
+        self.tabla_gym_musculacion()
+        print("Base de datos inicializada completamente")
+    
+    def cerrar_conexion(self):
+        """Cerrar la conexión a la base de datos"""
+        if self.conn:
+            self.conn.close()
+            print("Conexión cerrada")
+
+# INICIALIZACIÓN DE LA BASE DE DATOS
+if __name__ == "__main__":
+    # Crear instancia del manejador de base de datos
+    db_manager = DatabaseManager("gymnastic.db")
+    
+    # Crear todas las tablas
+    db_manager.inicializar_base_datos()
+    
+    # Cerrar la conexión
+    db_manager.cerrar_conexion()
+    
