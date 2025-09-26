@@ -16,7 +16,7 @@ class DatabaseManager:
             print(f"Error al conectar: {e}")
 
     def crear_tabla_usuarios(self):
-        '''Crear tabla usuarios con primary key'''
+        '''Crear tabla usuarios'''
         query = '''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,11 +32,10 @@ class DatabaseManager:
         print("Tabla 'usuarios' creada exitosamente")
 
     def tabla_gym_muscuacion(self):
-        """Crear tabla productos"""
+        """Crear tabla musculacion"""
         query = '''
-        CREATE TABLE IF NOT EXISTS productos (
+        CREATE TABLE IF NOT EXISTS musculacion (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
             series REAL NOT NULL,
             repeticiones REAL NOT NULL,
             fecha_horario_al_que_va DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -49,7 +48,7 @@ class DatabaseManager:
     def inicializar_base_datos(self):
         print("Inicializando base de datos...")
         self.crear_tabla_usuarios()
-        self.tabla_gym_musculacion()
+        self.tabla_gym_muscuacion()
         print("Base de datos inicializada completamente")
     
     def cerrar_conexion(self):
@@ -68,4 +67,5 @@ if __name__ == "__main__":
     
     # Cerrar la conexión
     db_manager.cerrar_conexion()
-    
+
+db_manager = DatabaseManager("gymnastic.db")

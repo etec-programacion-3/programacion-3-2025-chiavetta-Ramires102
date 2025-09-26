@@ -1,10 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from Base_de_datos import db
-from Base_de_datos.db import inicializar_base_datos
 
 app = FastAPI()
 
-inicializar_base_datos()
+db.db_manager.inicializar_base_datos()
 
 @app.get("/")
 def read_root():
