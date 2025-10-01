@@ -1,5 +1,7 @@
 ### alumno: Pablo Chiavetta
-
+## recordar:
+    -instalar alemic a la pc
+    -instalar pipx y hacerlo global con "pipx ensurepath"
 
 
 ## como funciona
@@ -8,4 +10,4 @@
 
     - todo lo que esta en el venv no se va a guardar en el repo
 
-    *Para iniciar la base de datos tenes que poner esto "uvicorn App:app --reload"
+    *Para iniciar el servidor tenes que poner esto "uvicorn App:app --reload"

@@ -1,3 +1,3 @@
-from Servicios.servicios import UsuarioService
+from fastapi import FastAPI
 
-app = FastAPI(title = "gym API", version = "0.0.1")
+app = FastAPI(title="gym API", version="0.0.1")
