@@ -19,4 +19,3 @@ sqlite3
 
 26/9/2025
     Esta clase pude hacer que funcionara la base de datos (se crea el archivo y se observan las tablas creadas con sus columnas), cree el modelo para los usuarios, agregue una verificacion en los servicios para los usuarios al querer ingresar (iniciar sesion), estube configurando el pyproject para seguir algunas reglas de escritura como los espacios que este todo de forma ordenada, fallos al ejecutar el codigo, detecta errores o bugs, me sujiere mejoras o simplificaciones.
-
