@@ -12,25 +12,25 @@ class servicio_de_usuario:
     def __init__(self):
         self.db_manager = DatabaseManager("gymnastic.db")
 
-    def registrar_usuario(self, nombre, email, edad, contraseña):
+    def registrar_usuario(self, Nombre, Email, Edad, Contraseña, Rol):
         """Servicio para registrar un nuevo usuario"""
         try:
             # Verificaciones de negocio
-            if not self._validar_email(email):
+            if not self._validar_email(Email):
                 return {"error": "Email inválido"}
 
-            if not self._validar_contraseña(contraseña):
+            if not self._validar_contraseña(Contraseña):
                 return {"error": "Contraseña debe tener al menos 8 caracteres"}
 
-            if self._usuario_existe(email):
+            if self._usuario_existe(Email):
                 return {"error": "El usuario ya está registrado"}
             # Registrar en la base de datos
             query = """
-            INSERT INTO usuarios (nombre, email, edad, contraseña, fecha_creacion)
+            INSERT INTO usuarios (Nombre, Email, Edad, Contraseña, Rol, fecha_creacion)
             VALUES (?, ?, ?, ?, ?)
             """
             self.db_manager.cursor.execute(
-                query, (nombre, email, edad, contraseña, datetime.now())
+                query, (Nombre, Email, Edad, Contraseña, Rol, datetime.now())
             )
             self.db_manager.conn.commit()
 
@@ -41,46 +41,47 @@ class servicio_de_usuario:
         except Exception as e:
             return {"error": f"Error interno: {e}"}
 
-    def verificar_login(self, email, contraseña):
+    def verificar_login(self, Email, Contraseña):
         """Servicio para verificar login de usuario existente"""
         try:
             # Buscar usuario
-            query = "SELECT * FROM usuarios WHERE email = ?"
-            self.db_manager.cursor.execute(query, (email,))
+            query = "SELECT * FROM usuarios WHERE Email = ?"
+            self.db_manager.cursor.execute(query, (Email,))
             usuario = self.db_manager.cursor.fetchone()
 
             if not usuario:
                 return {"error": "Usuario no encontrado"}
 
             # Verificar contraseña
-            hashed = pwd_context.hash(contraseña)
-            is_correct = pwd_context.verify(contraseña, hashed)
+            hashed = pwd_context.hash(Contraseña)
+            is_correct = pwd_context.verify(Contraseña, hashed)
             if not is_correct:
                 return {"error": "Contraseña incorrecta"}
 
             return {
                 "exito": "Login exitoso",
                 "usuario": {
-                    "id": usuario[0],
-                    "nombre": usuario[1],
-                    "email": usuario[2],
-                    "edad": usuario[3],
+                    "ID": usuario[0],
+                    "Nombre": usuario[1],
+                    "Email": usuario[2],
+                    "Edad": usuario[3],
+                    "Rol": usuario[4],
                 },
             }
 
         except Exception as e:
             return {"error": f"Error interno: {e}"}
 
-    def _validar_email(self, email):
-        """Validación privada de email"""
-        return "@" in email and "." in email
+    def _validar_email(self, Email):
+        """Validación privada de Email"""
+        return "@" in Email and "." in Email
 
-    def _validar_contraseña(self, contraseña):
-        """Validación privada de contraseña"""
-        return len(contraseña) >= 8
+    def _validar_contraseña(self, Contraseña):
+        """Validación privada de Contraseña"""
+        return len(Contraseña) >= 8
 
-    def _usuario_existe(self, email):
+    def _usuario_existe(self, Email):
         """Verificación privada si usuario existe"""
-        query = "SELECT id FROM usuarios WHERE email = ?"
-        self.db_manager.cursor.execute(query, (email,))
+        query = "SELECT id FROM usuarios WHERE Email = ?"
+        self.db_manager.cursor.execute(query, (Email,))
         return self.db_manager.cursor.fetchone() is not None
