@@ -19,3 +19,6 @@ sqlite3
 
 26/9/2025
     Esta clase pude hacer que funcionara la base de datos (se crea el archivo y se observan las tablas creadas con sus columnas), cree el modelo para los usuarios, agregue una verificacion en los servicios para los usuarios al querer ingresar (iniciar sesion), estube configurando el pyproject para seguir algunas reglas de escritura como los espacios que este todo de forma ordenada, fallos al ejecutar el codigo, detecta errores o bugs, me sujiere mejoras o simplificaciones.
+
+3/10/25
+    En esta clase termine la issue 1.2 y 1.3 donde cree la tabla del gym y las clases programadas, estoy terminando el tema de como las personas se van a poder inscribir en servicios, no hice el tema de la migracion porque no uso OMR asique deje el SQL.

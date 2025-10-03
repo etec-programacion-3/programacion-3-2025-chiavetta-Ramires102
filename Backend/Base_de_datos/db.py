@@ -19,10 +19,10 @@ class DatabaseManager:
         """Crear tabla usuarios"""
         query = """
         CREATE TABLE IF NOT EXISTS Usuario (
-            ID INTEGER PRIMARY KEY AUTOINCREMENT,
-            Nombre TEXT NOT NULL,
-            Email TEXT UNIQUE NOT NULL,
-            Edad INTEGER,
+            ID primary key AUTOINCREMENT,
+            Nombre TEXT NOT NULL UNIQUE,
+            Email TEXT NOT NULL UNIQUE,
+            Edad INTEGER NOT NULL,
             Contraseña TEXT NOT NULL,
             Rol TEXT DEFAULT 'Usuario' CHECK(Rol IN ('Entrenador', 'Usuario')),
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -32,24 +32,51 @@ class DatabaseManager:
         self.conn.commit()
         print("Tabla 'usuarios' creada exitosamente")
 
-    def tabla_gym_muscuacion(self):
-        """Crear tabla musculacion"""
+    def clase_del_gym(self):
+        """Crear tabla clase_del_gym"""
         query = """
-        CREATE TABLE IF NOT EXISTS musculacion (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            series REAL NOT NULL,
-            repeticiones REAL NOT NULL,
+        CREATE TABLE IF NOT EXISTS clase_del_gym (
+            Nombre text NOT NULL PRIMARY KEY,
+            Descripcion text NOT NULL,
+            Duracion REAL NOT NULL,
             fecha_horario_al_que_va DATETIME DEFAULT CURRENT_TIMESTAMP
         )
         """
         self.cursor.execute(query)
         self.conn.commit()
-        print("Tabla 'musculacion' creada exitosamente")
+        print("Tabla 'clase_del_gym' creada exitosamente")
+
+    def clase_programada(self):
+        """Crear tabla clase_programada"""
+        query = """
+        CREATE TABLE IF NOT EXISTS clase_programada (
+            ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre_entrenador TEXT NOT NULL,
+            email_entrenador TEXT NOT NULL,
+            nombre_clase TEXT NOT NULL,
+            Duracion REAL NOT NULL,
+
+            fecha_horario_al_que_va DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN Key (nombre_entrenador) REFERENCES Usuario(Nombre),
+            FOREIGN Key (email_entrenador) REFERENCES Usuario(Email),
+            FOREIGN Key (nombre_clase) REFERENCES clase_del_gym (Nombre)
+        )
+        """
+        self.cursor.execute(query)
+        self.conn.commit()
+        print("Tabla 'clase_del_gym' creada exitosamente")
+        try:
+            self.cursor.execute(query)
+            self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error al crear clase_programada: {e}")
 
     def inicializar_base_datos(self):
         print("Inicializando base de datos...")
         self.crear_tabla_usuarios()
-        self.tabla_gym_muscuacion()
+        self.clase_del_gym()
+        self.clase_programada()
         print("Base de datos inicializada completamente")
 
     def cerrar_conexion(self):
