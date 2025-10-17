@@ -18,13 +18,13 @@ class DatabaseManager:
     def crear_tabla_usuarios(self):
         """Crear tabla usuarios"""
         query = """
-        CREATE TABLE IF NOT EXISTS Usuario (
-            ID primary key AUTOINCREMENT,
-            Nombre TEXT NOT NULL UNIQUE,
-            Email TEXT NOT NULL UNIQUE,
-            Edad INTEGER NOT NULL,
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Nombre TEXT NOT NULL,
+            Email TEXT UNIQUE NOT NULL,
+            Edad INTEGER,
             Contraseña TEXT NOT NULL,
-            Rol TEXT DEFAULT 'Usuario' CHECK(Rol IN ('Entrenador', 'Usuario')),
+            Rol TEXT DEFAULT 'Usuario',
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         )
         """
