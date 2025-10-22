@@ -22,3 +22,6 @@ sqlite3
 
 3/10/25
     En esta clase termine la issue 1.2 y 1.3 donde cree la tabla del gym y las clases programadas, estoy terminando el tema de como las personas se van a poder inscribir en servicios, no hice el tema de la migracion porque no uso OMR asique deje el SQL.
+
+22/10/25
+    hice que con las rutas y los servicios pudieras registrarte, logearte y actualizar tus datos saque el passlib porque me causaba problemas con el bcrypt y la contraseña se hashea exitosamente.
