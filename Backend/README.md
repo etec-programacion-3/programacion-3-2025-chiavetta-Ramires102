@@ -10,4 +10,4 @@
 
     - todo lo que esta en el venv no se va a guardar en el repo
 
-    *Para iniciar el servidor tenes que poner esto "uvicorn App:app --reload"
+    *Para iniciar el servidor tenes que poner esto "uvicorn main:app --reload"

@@ -4,8 +4,6 @@ from pydantic import BaseModel, EmailStr, Field
 from Servicios.servicios import servicio_de_usuario
 
 router = APIRouter(prefix="", tags=["API Gymnastic"])
-
-
 servicio_usuario = servicio_de_usuario()
 
 
@@ -28,6 +26,25 @@ class UsuarioRegistro(BaseModel):
         }
 
 
+class UsuarioActualizacion(BaseModel):
+    nombre: str | None = Field(None, min_length=2, max_length=100)
+    email: EmailStr | None = None
+    edad: int | None = Field(None, ge=1, le=120)
+    contrasena: str | None = Field(None, min_length=8)
+    rol: str | None = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "nombre": "Juan Pérez Actualizado",
+                "email": "juan.nuevo@example.com",
+                "edad": 26,
+                "contrasena": "nuevoPassword123",
+                "rol": "admin",
+            }
+        }
+
+
 class UsuarioLogin(BaseModel):
     email: EmailStr
     contrasena: str
@@ -44,7 +61,6 @@ class UsuarioLogin(BaseModel):
 async def registrar(usuario: UsuarioRegistro):
     """
     Registrar un nuevo usuario en el sistema.
-
     - **nombre**: Nombre completo del usuario
     - **email**: Email válido y único
     - **edad**: Edad del usuario (1-120)
@@ -58,12 +74,10 @@ async def registrar(usuario: UsuarioRegistro):
         contrasena=usuario.contrasena,
         Rol=usuario.rol,
     )
-
     if "error" in resultado:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=resultado["error"]
         )
-
     return resultado
 
 
@@ -71,25 +85,82 @@ async def registrar(usuario: UsuarioRegistro):
 async def login(credenciales: UsuarioLogin):
     """
     Iniciar sesión con email y contrasena.
-
     - **email**: Email del usuario registrado
     - **contrasena**: contrasena del usuario
     """
     resultado = servicio_usuario.verificar_login(
         Email=credenciales.email, contrasena=credenciales.contrasena
     )
-
     if "error" in resultado:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=resultado["error"]
+        )
+    return resultado
+
+
+@router.put("/api/usuario/{usuario_id}", tags=["Usuarios"])
+async def actualizar_usuario(usuario_id: int, datos: UsuarioActualizacion):
+    """
+    Actualizar los datos de un usuario existente.
+
+    - **usuario_id**: ID del usuario a actualizar
+    - **nombre**: Nuevo nombre (opcional)
+    - **email**: Nuevo email (opcional)
+    - **edad**: Nueva edad (opcional)
+    - **contrasena**: Nueva contraseña (opcional)
+    - **rol**: Nuevo rol (opcional)
+
+    Solo se actualizarán los campos que se envíen en la petición.
+    """
+    # Crear diccionario solo con los campos que no son None
+    datos_actualizar = {k: v for k, v in datos.model_dump().items() if v is not None}
+
+    if not datos_actualizar:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe proporcionar al menos un campo para actualizar",
+        )
+
+    # Mapear los nombres de los campos si es necesario
+    datos_servicio = {}
+    if "nombre" in datos_actualizar:
+        datos_servicio["Nombre"] = datos_actualizar["nombre"]
+    if "email" in datos_actualizar:
+        datos_servicio["Email"] = datos_actualizar["email"]
+    if "edad" in datos_actualizar:
+        datos_servicio["Edad"] = datos_actualizar["edad"]
+    if "contrasena" in datos_actualizar:
+        datos_servicio["contrasena"] = datos_actualizar["contrasena"]
+    if "rol" in datos_actualizar:
+        datos_servicio["Rol"] = datos_actualizar["rol"]
+
+    resultado = servicio_usuario.actualizar_usuario(
+        usuario_id=usuario_id, **datos_servicio
+    )
+
+    if "error" in resultado:
+        if "no encontrado" in resultado["error"].lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=resultado["error"]
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=resultado["error"]
         )
 
     return resultado
 
 
+@router.delete("/api/usuarios/{usuario_id}")
+async def eliminar_usuario(usuario_id: int):
+    resultado = servicio_usuario.eliminar_usuario(usuario_id)
+
+    if "error" in resultado:
+        raise HTTPException(status_code=404, detail=resultado["error"])
+
+    return resultado
+
+
 # ===== RUTAS DE PRUEBA =====
-
-
 @router.get("/", tags=["General"])
 async def home():
     """Ruta de inicio para verificar que la API está funcionando"""
@@ -100,6 +171,7 @@ async def home():
         "endpoints": {
             "registro": "/api/registro [POST]",
             "login": "/api/login [POST]",
+            "actualizar_usuario": "/api/usuario/{usuario_id} [PUT]",
             "documentación": "/docs",
         },
     }
@@ -109,9 +181,3 @@ async def home():
 async def health():
     """Health check para monitoreo"""
     return {"status": "ok", "service": "gymnastic-api"}
-
-
-# ===== INICIAR SERVIDOR =====
-# Ejecutar con: uvicorn main:app --reload
-
-# Nota: ejecutar con `uvicorn App:app --reload` (App incluirá este router)
