@@ -2,7 +2,7 @@
 GET http://localhost:8000/
 
 ### Health Check
-GET http://localhost:8000/api/health
+GET http://localhost:8000/api/localhost:8000/api/health
 
 ### User Registration
 POST http://localhost:8000/api/registro
@@ -22,7 +22,7 @@ Content-Type: application/json
 
 {
   "email": "juan@example.com",
-  "contraseña": "miPassword123"
+  "contrasena": "miPassword12"
 }
 
 ### Update User
