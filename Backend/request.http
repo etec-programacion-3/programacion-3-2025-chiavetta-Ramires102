@@ -2,7 +2,10 @@
 GET http://localhost:8000/
 
 ### Health Check
-GET http://localhost:8000/api/localhost:8000/api/health
+GET http://localhost:8000/api/health
+
+### Health Check
+GET http://localhost:8000/api/usuarios/regitrados
 
 ### User Registration
 POST http://localhost:8000/api/registro
@@ -21,7 +24,7 @@ POST http://localhost:8000/api/login
 Content-Type: application/json
 
 {
-  "email": "juan@example.com",
+  "email": "juan@example2.com",
   "contrasena": "miPassword12"
 }
 
@@ -31,9 +34,9 @@ Content-Type: application/json
 
 {
   "nombre": "Juan Pérez Updated",
-  "email": "juan@example.com",
+  "email": "juan@example2.com",
   "edad": 26
 }
 
 ### Delete User
-DELETE http://localhost:8000/api/usuario/1
+DELETE http://localhost:8000/api/usuarios/1

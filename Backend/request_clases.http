@@ -1,0 +1,28 @@
+### clases
+GET http://localhost:8000/api/clase
+
+### obtener una clase en espesifico
+GET http://localhost:8000/api/clase/1
+
+### descripcion y duracion
+POST http://localhost:8000/api/clase
+Content-Type: application/json
+
+{
+  "nombre": "Yoga para principiantes",
+  "descripcion": "Clase de Yoga para principiantes",
+  "duracion": 60,
+  "fecha_horario_al_que_va": "1/11/2025 10:00 AM"
+}
+
+### actualizar datos
+PUT http://localhost:8000/api/login
+Content-Type: application/json
+
+{
+  "nombre": "Yoga avanzado",
+  "descripcion": "Clase de Yoga para avanzados"
+}
+
+### eliminar clase
+DELETE http://localhost:8000/api/clase/1

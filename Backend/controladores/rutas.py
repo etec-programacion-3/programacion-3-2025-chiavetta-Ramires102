@@ -2,9 +2,11 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 
 from Servicios.servicios import servicio_de_usuario
+from Servicios.servicios_clases import servicio_de_clase
 
 router = APIRouter(prefix="", tags=["API Gymnastic"])
 servicio_usuario = servicio_de_usuario()
+servicio_clase = servicio_de_clase()
 
 
 class UsuarioRegistro(BaseModel):
@@ -150,9 +152,9 @@ async def actualizar_usuario(usuario_id: int, datos: UsuarioActualizacion):
     return resultado
 
 
-@router.delete("/api/usuarios/{usuario_id}")
-async def eliminar_usuario(usuario_id: int):
-    resultado = servicio_usuario.eliminar_usuario(usuario_id)
+@router.delete("/api/usuarios/{id}")
+async def eliminar_usuario(id: int):
+    resultado = servicio_usuario.eliminar_usuario(id)
 
     if "error" in resultado:
         raise HTTPException(status_code=404, detail=resultado["error"])
@@ -181,3 +183,48 @@ async def home():
 async def health():
     """Health check para monitoreo"""
     return {"status": "ok", "service": "gymnastic-api"}
+
+
+@router.get("/api/usuarios/regitrados", tags=["Usuarios"])
+async def obtener_usuarios_de_prueba():
+    """Ruta de prueba para obtener usuarios (no para producción)"""
+    resultado = servicio_usuario.obtener_usuarios()
+    return resultado
+
+
+# --------------------------------rutas de clases-------------------------------------
+
+
+@router.get("/api/clase", tags=["Clases"])
+async def obtener_clases():
+    """Ruta para obtener las clases del gym"""
+    resultado = servicio_clase.obtener_clases()
+    return resultado
+
+
+@router.get("/api/clase/{id}", tags=["Clases"])
+async def obtener_clase_por_id():
+    """Ruta para obtener una clase del gym por ID"""
+    resultado = servicio_clase.obtener_clases()
+    return resultado
+
+
+@router.post("/api/clase", tags=["Clases"])
+async def crear_clase():
+    """Ruta para crear una nueva clase del gym"""
+    resultado = servicio_clase.agregar_clase()
+    return resultado
+
+
+@router.put("/api/clase/{id}", tags=["Clases"])
+async def actualizar_clase():
+    """Ruta para actualizar una clase del gym"""
+    resultado = servicio_clase.actualizar_clase()
+    return resultado
+
+
+@router.delete("/api/clase/{id}", tags=["Clases"])
+async def eliminar_clase():
+    """Ruta para eliminar una clase del gym"""
+    resultado = servicio_clase.eliminar_clase()
+    return resultado

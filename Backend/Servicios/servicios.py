@@ -194,10 +194,10 @@ class servicio_de_usuario:
         except Exception as e:
             return {"error": f"Error interno: {e}"}
 
-    def eliminar_usuario(self, usuario_id):
+    def eliminar_usuario(self, id):
         try:
             query = "DELETE FROM usuarios WHERE id = ?"
-            self.db_manager.cursor.execute(query, (usuario_id,))
+            self.db_manager.cursor.execute(query, (id,))
             self.db_manager.conn.commit()
 
             if self.db_manager.cursor.rowcount == 0:
@@ -208,4 +208,31 @@ class servicio_de_usuario:
             self.db_manager.conn.rollback()
             return {"error": f"Error en base de datos: {e}"}
         except Exception as e:
+            return {"error": f"Error interno: {e}"}
+
+    def obtener_usuarios(self):
+        try:
+            query = "SELECT id, Nombre, Email, Edad, Rol, fecha_creacion FROM usuarios"
+            self.db_manager.cursor.execute(query)
+            usuarios = self.db_manager.cursor.fetchall()
+
+            lista_usuarios = []
+            for usuario in usuarios:
+                lista_usuarios.append(
+                    {
+                        "ID": usuario[0],
+                        "Nombre": usuario[1],
+                        "Email": usuario[2],
+                        "Edad": usuario[3],
+                        "Rol": usuario[4],
+                        "fecha_creacion": usuario[5],
+                    }
+                )
+
+            return {"usuarios": lista_usuarios}
+
+        except sqlite3.Error as e:
+            return {"error": f"Error en base de datos: {e}"}
+        except Exception as e:
+            logger.error(f"Error interno al obtener usuarios: {e}", exc_info=True)
             return {"error": f"Error interno: {e}"}
