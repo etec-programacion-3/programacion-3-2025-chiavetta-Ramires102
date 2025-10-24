@@ -236,3 +236,29 @@ class servicio_de_usuario:
         except Exception as e:
             logger.error(f"Error interno al obtener usuarios: {e}", exc_info=True)
             return {"error": f"Error interno: {e}"}
+
+    def obtener_usuario_por_id(self, id):
+        try:
+            query = "SELECT id, Nombre, Email, Edad, Rol, fecha_creacion FROM usuarios WHERE id = ?"
+            self.db_manager.cursor.execute(query, (id,))
+            usuario = self.db_manager.cursor.fetchone()
+
+            if usuario is None:
+                return {"error": "Usuario no encontrado"}
+
+            resultado = {
+                "ID": usuario[0],
+                "Nombre": usuario[1],
+                "Email": usuario[2],
+                "Edad": usuario[3],
+                "Rol": usuario[4],
+                "fecha_creacion": usuario[5],
+            }
+
+            return {"usuario": resultado}
+
+        except sqlite3.Error as e:
+            return {"error": f"Error en base de datos: {e}"}
+        except Exception as e:
+            logger.error(f"Error interno al obtener usuario por ID: {e}", exc_info=True)
+            return {"error": f"Error interno: {e}"}

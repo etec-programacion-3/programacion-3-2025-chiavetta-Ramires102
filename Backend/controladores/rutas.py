@@ -28,6 +28,40 @@ class UsuarioRegistro(BaseModel):
         }
 
 
+class ClaseRegistro(BaseModel):
+    nombre: str = Field(..., min_length=2, max_length=100)
+    descripcion: str = Field(..., min_length=5, max_length=500)
+    duracion: float = Field(..., gt=0)
+    fecha_horario_al_que_va: str = Field(...)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "nombre": "Yoga para principiantes",
+                "descripcion": "Clase de yoga enfocada en principiantes.",
+                "duracion": 1.5,
+                "fecha_horario_al_que_va": "2024-07-15 10:00:00",
+            }
+        }
+
+
+class ClaseActualizacion(BaseModel):
+    nombre: str | None = Field(None, min_length=2, max_length=100)
+    descripcion: str | None = Field(None, min_length=5, max_length=500)
+    duracion: float | None = Field(None, gt=0)
+    fecha_horario_al_que_va: str | None = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "nombre": "Yoga Intermedio",
+                "descripcion": "Clase de yoga para nivel intermedio.",
+                "duracion": 2.0,
+                "fecha_horario_al_que_va": "2024-07-15 12:00:00",
+            }
+        }
+
+
 class UsuarioActualizacion(BaseModel):
     nombre: str | None = Field(None, min_length=2, max_length=100)
     email: EmailStr | None = None
@@ -162,7 +196,6 @@ async def eliminar_usuario(id: int):
     return resultado
 
 
-# ===== RUTAS DE PRUEBA =====
 @router.get("/", tags=["General"])
 async def home():
     """Ruta de inicio para verificar que la API está funcionando"""
@@ -192,6 +225,17 @@ async def obtener_usuarios_de_prueba():
     return resultado
 
 
+@router.get("/api/usuarios/{id}", tags=["Usuarios"])
+async def obtener_usuario_por_id(id: int):
+    """Ruta para obtener un usuario por ID"""
+    resultado = servicio_usuario.obtener_usuario_por_id(id)
+    if "error" in resultado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=resultado["error"]
+        )
+    return resultado
+
+
 # --------------------------------rutas de clases-------------------------------------
 
 
@@ -203,28 +247,88 @@ async def obtener_clases():
 
 
 @router.get("/api/clase/{id}", tags=["Clases"])
-async def obtener_clase_por_id():
+async def obtener_clase_por_id(id: int):
     """Ruta para obtener una clase del gym por ID"""
-    resultado = servicio_clase.obtener_clases()
+    resultado = servicio_clase.obtener_clase_por_id(id)
     return resultado
 
 
 @router.post("/api/clase", tags=["Clases"])
-async def crear_clase():
+async def agregar_clase(clase: ClaseRegistro):
     """Ruta para crear una nueva clase del gym"""
-    resultado = servicio_clase.agregar_clase()
+    resultado = servicio_clase.agregar_clase(
+        nombre=clase.nombre,
+        descripcion=clase.descripcion,
+        duracion=clase.duracion,
+        fecha_horario_al_que_va=clase.fecha_horario_al_que_va,
+    )
     return resultado
 
 
 @router.put("/api/clase/{id}", tags=["Clases"])
-async def actualizar_clase():
+async def actualizar_clase(id: int, clase: ClaseActualizacion):
     """Ruta para actualizar una clase del gym"""
-    resultado = servicio_clase.actualizar_clase()
+    resultado = servicio_clase.actualizar_clase(
+        id=id,
+        nombre=clase.nombre,
+        descripcion=clase.descripcion,
+        duracion=clase.duracion,
+        fecha_horario_al_que_va=clase.fecha_horario_al_que_va,
+    )
     return resultado
 
 
 @router.delete("/api/clase/{id}", tags=["Clases"])
-async def eliminar_clase():
+async def eliminar_clase(id: int):
     """Ruta para eliminar una clase del gym"""
-    resultado = servicio_clase.eliminar_clase()
+    resultado = servicio_clase.eliminar_clase(id)
+    return resultado
+
+
+# --------------------------------rutas de clases-------------------------------------
+
+
+@router.get("/api/clasesProgramadas", tags=["Clases Programadas"])
+async def obtener_clases_programadas():
+    """Ruta para obtener las clases programadas del gym"""
+    resultado = servicio_clase.obtener_clases_programadas()
+    return resultado
+
+
+@router.get("/api/clasesProgramadas/{id}", tags=["Clases Programadas"])
+async def obtener_clase_programada_por_id(id: int):
+    """Ruta para obtener una clase programada del gym por ID"""
+    resultado = servicio_clase.obtener_clase_programada_por_id(id)
+    return resultado
+
+
+@router.post("/api/claseProgramada", tags=["Clases Programadas"])
+async def agregar_clase_programada(clase_programada: ClaseRegistro):
+    """Ruta para crear una nueva clase programada del gym"""
+    resultado = servicio_clase.agregar_clase_programada(
+        nombre=clase_programada.nombre,
+        descripcion=clase_programada.descripcion,
+        duracion=clase_programada.duracion,
+        fecha_horario_al_que_va=clase_programada.fecha_horario_al_que_va,
+    )
+    return resultado
+
+
+@router.put("/api/claseProgramada/{id}", tags=["Clases Programadas"])
+async def actualizar_clase_programada(id: int, clase_programada: ClaseActualizacion):
+    """Ruta para actualizar una clase programada del gym"""
+    resultado = servicio_clase.actualizar_clase_programada(
+        id=id,
+        nombre=clase_programada.nombre,
+        descripcion=clase_programada.descripcion,
+        duracion=clase_programada.duracion,
+        fecha_horario_al_que_va=clase_programada.fecha_horario_al_que_va,
+    )
+    return resultado
+
+
+@router.delete("/api/claseProgramada/{id}", tags=["Clases Programadas"])
+async def eliminar_clase_programada(id: int):
+    """Ruta para eliminar una clase programada del gym"""
+    resultado = servicio_clase.eliminar_clase_programada(id)
     return resultado
