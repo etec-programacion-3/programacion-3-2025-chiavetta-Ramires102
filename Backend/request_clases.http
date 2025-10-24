@@ -2,7 +2,7 @@
 GET http://localhost:8000/api/clase
 
 ### obtener una clase en espesifico
-GET http://localhost:8000/api/clase/1
+GET http://localhost:8000/api/clase/4
 
 ### descripcion y duracion
 POST http://localhost:8000/api/clase
@@ -16,7 +16,7 @@ Content-Type: application/json
 }
 
 ### actualizar datos
-PUT http://localhost:8000/api/login
+PUT http://localhost:8000/api/clase/2
 Content-Type: application/json
 
 {
@@ -25,4 +25,4 @@ Content-Type: application/json
 }
 
 ### eliminar clase
-DELETE http://localhost:8000/api/clase/1
+DELETE http://localhost:8000/api/clase/2

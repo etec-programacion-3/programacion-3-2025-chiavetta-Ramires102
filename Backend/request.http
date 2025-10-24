@@ -7,6 +7,9 @@ GET http://localhost:8000/api/health
 ### Health Check
 GET http://localhost:8000/api/usuarios/regitrados
 
+### Get spesific user
+GET http://localhost:8000/api/usuarios/1
+
 ### User Registration
 POST http://localhost:8000/api/registro
 Content-Type: application/json

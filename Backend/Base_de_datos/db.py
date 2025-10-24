@@ -36,7 +36,8 @@ class DatabaseManager:
         """Crear tabla clase_del_gym"""
         query = """
         CREATE TABLE IF NOT EXISTS clase_del_gym (
-            Nombre text NOT NULL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Nombre text NOT NULL,
             Descripcion text NOT NULL,
             Duracion REAL NOT NULL,
             fecha_horario_al_que_va DATETIME DEFAULT CURRENT_TIMESTAMP
