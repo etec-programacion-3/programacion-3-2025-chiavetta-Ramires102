@@ -29,3 +29,6 @@ sqlite3
 
 23/10/25
     tengo que hacer el tema de lque funcionen bien las rutas para las clases pero todo lo del usuario funciona correctamente..
+
+24/10/25
+    complete el hecho de agregar las clases (GET, POST, PUT, DELETE) y ahora termine de hacer el codigo para las clases programadas. ahora solo nesesito verificar que las clases programadas funcionen correctamente y listo terminaria la issue 2.2.
