@@ -32,3 +32,6 @@ sqlite3
 
 24/10/25
     complete el hecho de agregar las clases (GET, POST, PUT, DELETE) y ahora termine de hacer el codigo para las clases programadas. ahora solo nesesito verificar que las clases programadas funcionen correctamente y listo terminaria la issue 2.2.
+
+29/10/25
+    Logre que todo el back funcionara, cree un front basico para probra las funcionalidades, inicio el frontend con: python3 -m http.server 8080, y el puerto que uso en todo es el 5000.

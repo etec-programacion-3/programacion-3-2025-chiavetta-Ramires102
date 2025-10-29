@@ -30,6 +30,27 @@ class servicio_de_usuario:
             logger.info("Contraseña truncada a 72 bytes")
         return contrasena_bytes
 
+    def _normalizar_rol(self, Rol):
+        """Normaliza y valida el rol. Devuelve el valor para almacenar en DB o None si inválido.
+
+        Reglas:
+        - 'entrenador' -> '!Entrenador!'
+        - 'admin' -> '%Admin%'
+        - 'usuario' -> 'Usuario'
+        Comparación case-insensitive y acepta variantes comunes.
+        """
+        if not isinstance(Rol, str):
+            return None
+        r = Rol.strip().lower()
+        if r == "entrenador" or "entrenador" in r:
+            return f"!{Rol.strip()}!"
+        if r == "admin" or r == "administrator" or r == "adm":
+            return f"%{Rol.strip()}%"
+        if r == "usuario" or "user" in r:
+            # almacenar con mayúscula inicial consistente
+            return "Usuario"
+        return None
+
     def _hashear_contrasena(self, contrasena):
         """Hashear contraseña usando bcrypt"""
         contrasena_bytes = self._truncar_contrasena(contrasena)
@@ -61,6 +82,14 @@ class servicio_de_usuario:
                 logger.warning(f"Usuario ya existe: {Email}")
                 return {"error": "El usuario ya está registrado"}
 
+            # Normalizar rol para almacenamiento: Entrenador -> !Entrenador!, Admin -> %Admin%
+            rol_db = self._normalizar_rol(Rol)
+            if rol_db is None:
+                logger.warning(f"Rol inválido: {Rol}")
+                return {
+                    "error": "Rol inválido. Opciones válidas: usuario, admin, entrenador"
+                }
+
             # Hashear contraseña (ya incluye truncamiento)
             contrasena_hasheada = self._hashear_contrasena(contrasena)
             logger.info(f"Hash generado exitosamente para {Email}")
@@ -70,7 +99,8 @@ class servicio_de_usuario:
                 VALUES (?, ?, ?, ?, ?, ?)
             """
             self.db_manager.cursor.execute(
-                query, (Nombre, Email, Edad, contrasena_hasheada, Rol, datetime.now())
+                query,
+                (Nombre, Email, Edad, contrasena_hasheada, rol_db, datetime.now()),
             )
             self.db_manager.conn.commit()
             logger.info(f"Usuario registrado exitosamente: {Email}")
@@ -173,8 +203,13 @@ class servicio_de_usuario:
                 valores.append(contrasena_hasheada)
 
             if Rol is not None:
+                rol_db = self._normalizar_rol(Rol)
+                if rol_db is None:
+                    return {
+                        "error": "Rol inválido. Opciones válidas: usuario, admin, entrenador"
+                    }
                 campos.append("Rol = ?")
-                valores.append(Rol)
+                valores.append(rol_db)
 
             if not campos:
                 return {"error": "No se proporcionaron campos para actualizar"}
@@ -261,4 +296,42 @@ class servicio_de_usuario:
             return {"error": f"Error en base de datos: {e}"}
         except Exception as e:
             logger.error(f"Error interno al obtener usuario por ID: {e}", exc_info=True)
+            return {"error": f"Error interno: {e}"}
+
+    def obtener_usuarios_por_rol(self, rol):
+        try:
+            rol_db = self._normalizar_rol(rol)
+            if rol_db is None:
+                return {
+                    "error": "Rol inválido. Opciones válidas: usuario, adm, entrenador"
+                }
+
+            query = "SELECT id, Nombre, Email, Edad, Rol, fecha_creacion FROM usuarios WHERE Rol = ?"
+            self.db_manager.cursor.execute(query, (rol_db,))
+            usuarios = self.db_manager.cursor.fetchall()
+
+            if not usuarios:
+                return {"error": "No se encontraron usuarios con el rol especificado"}
+
+            lista_usuarios = []
+            for usuario in usuarios:
+                lista_usuarios.append(
+                    {
+                        "ID": usuario[0],
+                        "Nombre": usuario[1],
+                        "Email": usuario[2],
+                        "Edad": usuario[3],
+                        "Rol": usuario[4],
+                        "fecha_creacion": usuario[5],
+                    }
+                )
+
+            return {"usuarios": lista_usuarios}
+
+        except sqlite3.Error as e:
+            return {"error": f"Error en base de datos: {e}"}
+        except Exception as e:
+            logger.error(
+                f"Error interno al obtener usuarios por rol: {e}", exc_info=True
+            )
             return {"error": f"Error interno: {e}"}

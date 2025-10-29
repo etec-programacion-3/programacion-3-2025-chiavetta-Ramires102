@@ -10,16 +10,24 @@ GET http://localhost:8000/api/usuarios/regitrados
 ### Get spesific user
 GET http://localhost:8000/api/usuarios/1
 
+### tener todos los administradores
+GET http://localhost:8000/api/usuarios/rol/adm
+Content-Type: application/json
+
+### tener todos los entrenadores
+GET http://localhost:8000/api/usuarios/rol/entrenador
+Content-Type: application/json
+
 ### User Registration
 POST http://localhost:8000/api/registro
 Content-Type: application/json
 
 {
-  "nombre": "Juan Pérez",
-  "email": "juan@example.com",
+  "nombre": "Juan perecitto",
+  "email": "petecito@example.com",
   "edad": 25,
   "contrasena": "miPassword12",
-  "rol": "Usuario"
+  "rol": "entrenador"
 }
 
 ### User Login
