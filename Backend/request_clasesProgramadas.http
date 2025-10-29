@@ -1,0 +1,34 @@
+### obtengo todas las clases programadas
+GET http://localhost:8000/api/clasesProgramadas
+
+### obtener una clase programada en espesifico
+GET http://localhost:8000/api/clasesProgramadas/1
+
+### crear una clase programada
+POST http://localhost:8000/api/clasesProgramadas
+Content-Type: application/json
+
+{
+  "nombre_entrenador": "Juan Perez",
+  "email_entrenador": "carlos@gmail.com",
+  "nombre_clase": "Pilates Intermedio",
+  "duracion": 45,
+  "fecha_horario_al_que_va": "2025-12-15T14:30:00"
+}
+
+### actualizar clase programada
+PUT http://localhost:8000/api/clasesProgramadas/1
+Content-Type: application/json
+
+{
+  "nombre_entrenador": "Carlos Ramirez",
+  "email_entrenador": "carlitos@gmail.com",
+  "nombre_clase": "Pilates Avanzado",
+  "duracion": 60,
+  "fecha_horario_al_que_va": "2025-12-16T16:00:00"
+}
+
+
+### eliminar clase programada
+DELETE http://localhost:8000/api/clasesProgramadas/1
+Content-Type: application/json
