@@ -19,7 +19,7 @@ GET http://localhost:8000/api/usuarios/rol/entrenador
 Content-Type: application/json
 
 ### User Registration
-POST http://localhost:8000/api/registro
+POST http://localhost:5000/api/registro
 Content-Type: application/json
 
 {
