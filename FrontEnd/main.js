@@ -1,102 +1,128 @@
-// Configuración de la API
+// API Configuration
 const API_URL = 'http://localhost:5000/api';
 
-// Elementos del DOM
-const clasesList = document.getElementById('clasesList');
-const clasesProgramadasList = document.getElementById('clasesProgramadasList');
-const nuevaClaseForm = document.getElementById('nuevaClaseForm');
+// DOM Elements
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
 
-// Funciones de utilidad
-function showError(message, container) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error';
-    errorDiv.textContent = message;
-    container.prepend(errorDiv);
-    setTimeout(() => errorDiv.remove(), 5000);
+// Mostrar formulario de registro
+function showRegister() {
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+    clearMessages();
 }
 
-function showLoading(container) {
-    container.innerHTML = '<div class="loading">Cargando...</div>';
+// Mostrar formulario de login
+function showLogin() {
+    registerForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    clearMessages();
 }
 
-// Funciones para cargar datos
-async function cargarClases() {
-    try {
-        showLoading(clasesList);
-        const response = await fetch(`${API_URL}/clase`);
-        if (!response.ok) throw new Error('Error al cargar las clases');
-        
-        const clases = await response.json();
-        clasesList.innerHTML = '';
-        
-        clases.forEach(clase => {
-            const claseElement = document.createElement('div');
-            claseElement.className = 'clase-item';
-            claseElement.innerHTML = `
-                <h3>${clase.nombre}</h3>
-                <p>${clase.descripcion}</p>
-            `;
-            clasesList.appendChild(claseElement);
-        });
-    } catch (error) {
-        showError('No se pudieron cargar las clases', clasesList);
-    }
+// Limpiar mensajes
+function clearMessages() {
+    document.getElementById('loginMessage').innerHTML = '';
+    document.getElementById('registerMessage').innerHTML = '';
 }
 
-async function cargarClasesProgramadas() {
-    try {
-        showLoading(clasesProgramadasList);
-        const response = await fetch(`${API_URL}/clasesProgramadas`);
-        if (!response.ok) throw new Error('Error al cargar las clases programadas');
-        
-        const clasesProgramadas = await response.json();
-        clasesProgramadasList.innerHTML = '';
-        
-        clasesProgramadas.forEach(clase => {
-            const claseElement = document.createElement('div');
-            claseElement.className = 'clase-item';
-            claseElement.innerHTML = `
-                <h3>${clase.nombre}</h3>
-                <p>Fecha: ${new Date(clase.fecha).toLocaleDateString()}</p>
-                <p>Hora: ${clase.hora}</p>
-            `;
-            clasesProgramadasList.appendChild(claseElement);
-        });
-    } catch (error) {
-        showError('No se pudieron cargar las clases programadas', clasesProgramadasList);
-    }
+// Mostrar mensaje
+function showMessage(elementId, message, type) {
+    const el = document.getElementById(elementId);
+    el.innerHTML = `<div class="message ${type}">${message}</div>`;
 }
 
-// Manejador del formulario para agregar nuevas clases
-nuevaClaseForm.addEventListener('submit', async (e) => {
+// Manejar login
+async function handleLogin(e) {
     e.preventDefault();
     
-    const nombreClase = document.getElementById('nombreClase').value;
-    const descripcion = document.getElementById('descripcion').value;
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
     
     try {
-        const response = await fetch(`${API_URL}/clase`, {
+        showMessage('loginMessage', 'Iniciando sesión...', 'info');
+        
+        const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                nombre: nombreClase,
-                descripcion: descripcion
-            })
+            body: JSON.stringify({ email, password })
         });
         
-        if (!response.ok) throw new Error('Error al crear la clase');
+        const data = await response.json();
         
-        await cargarClases(); // Recargar la lista de clases
-        nuevaClaseForm.reset(); // Limpiar el formulario
+        if (response.ok) {
+            // Guardar el token
+            localStorage.setItem('token', data.token);
+            showMessage('loginMessage', '¡Login exitoso! Redirigiendo...', 'success');
+            
+            // Redirigir al usuario a la página principal después de 1.5 segundos
+            setTimeout(() => {
+                window.location.href = '/dashboard.html';
+            }, 1500);
+        } else {
+            showMessage('loginMessage', data.detail || 'Error al iniciar sesión', 'error');
+        }
     } catch (error) {
-        showError('No se pudo crear la clase', nuevaClaseForm);
+        showMessage('loginMessage', 'Error de conexión con el servidor', 'error');
+        console.error('Error:', error);
     }
-});
+}
 
-// Cargar datos al iniciar la página
+// Manejar registro
+async function handleRegister(e) {
+    e.preventDefault();
+    
+    const userData = {
+        usuario: document.getElementById('registerName').value,
+        email: document.getElementById('registerEmail').value,
+        edad: parseInt(document.getElementById('registerAge').value),
+        password: document.getElementById('registerPassword').value,
+        rol: 'usuario' // Asignado automáticamente
+    };
+    
+    try {
+        showMessage('registerMessage', 'Procesando registro...', 'info');
+        
+        const response = await fetch(`${API_URL}/registro`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showMessage('registerMessage', '¡Registro exitoso! Ya puedes iniciar sesión', 'success');
+            
+            // Limpiar formulario
+            document.getElementById('registerName').value = '';
+            document.getElementById('registerEmail').value = '';
+            document.getElementById('registerAge').value = '';
+            document.getElementById('registerPassword').value = '';
+            
+            // Volver al login después de 2 segundos
+            setTimeout(() => {
+                showLogin();
+                // Pre-llenar el email en el formulario de login
+                document.getElementById('loginEmail').value = userData.email;
+            }, 2000);
+        } else {
+            showMessage('registerMessage', data.detail || 'Error al registrarse', 'error');
+        }
+    } catch (error) {
+        showMessage('registerMessage', 'Error de conexión con el servidor', 'error');
+        console.error('Error:', error);
+    }
+}
+
+// Comprobar si hay un token al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
-    cargarClases();
-    cargarClasesProgramadas();
+    const token = localStorage.getItem('token');
+    if (token) {
+        // Si hay un token, redirigir al dashboard
+        window.location.href = '/dashboard.html';
+    }
 });
