@@ -35,3 +35,6 @@ sqlite3
 
 29/10/25
     Logre que todo el back funcionara, cree un front basico para probra las funcionalidades, inicio el frontend con: python3 -m http.server 8080, y el puerto que uso en todo es el 5000.
+
+31/10/25   
+    logre hacer la pagina en su mayoria, fnuciona los botones para registrarse y logearse, te podes poner una imgen de tu compu en tu cuenta y cerrar session correctamente.

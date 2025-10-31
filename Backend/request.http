@@ -1,25 +1,25 @@
 ### Home
-GET http://localhost:8000/
+GET http://localhost:5000/
 
 ### Health Check
-GET http://localhost:8000/api/health
+GET http://localhost:5000/health
 
 ### Health Check
-GET http://localhost:8000/api/usuarios/regitrados
+GET http://localhost:5000/usuarios/registrados
 
 ### Get spesific user
-GET http://localhost:8000/api/usuarios/1
+GET http://localhost:5000/usuarios/1
 
 ### tener todos los administradores
-GET http://localhost:8000/api/usuarios/rol/adm
+GET http://localhost:5000/usuarios/rol/adm
 Content-Type: application/json
 
 ### tener todos los entrenadores
-GET http://localhost:8000/api/usuarios/rol/entrenador
+GET http://localhost:5000/usuarios/rol/entrenador
 Content-Type: application/json
 
 ### User Registration
-POST http://localhost:5000/api/registro
+POST http://localhost:5000/registro
 Content-Type: application/json
 
 {
@@ -31,7 +31,7 @@ Content-Type: application/json
 }
 
 ### User Login
-POST http://localhost:8000/api/login
+POST http://localhost:5000/login
 Content-Type: application/json
 
 {
@@ -40,7 +40,7 @@ Content-Type: application/json
 }
 
 ### Update User
-PUT http://localhost:8000/api/usuario/1
+PUT http://localhost:5000/usuario/1
 Content-Type: application/json
 
 {
@@ -50,4 +50,4 @@ Content-Type: application/json
 }
 
 ### Delete User
-DELETE http://localhost:8000/api/usuarios/1
+DELETE http://localhost:5000/usuarios/1

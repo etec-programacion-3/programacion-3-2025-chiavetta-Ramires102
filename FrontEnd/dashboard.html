@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerGym - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .gym-name {
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-toggle {
+            background: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #667eea;
+            transition: transform 0.2s;
+        }
+
+        .menu-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        /* Sidebar Menu */
+        .sidebar {
+            position: fixed;
+            right: -400px;
+            top: 0;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            right: 0;
+        }
+
+        .sidebar-header {
+            position: relative;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-image-container {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .profile-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .camera-overlay {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-content {
+            padding: 30px;
+        }
+
+        .menu-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f5f5f5;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #e0e0e0;
+        }
+
+        .menu-icon {
+            font-size: 24px;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .exercises-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .exercise-category {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: opacity 0.2s;
+        }
+
+        .category-header:hover {
+            opacity: 0.9;
+        }
+
+        .category-title {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .arrow {
+            font-size: 20px;
+            transition: transform 0.3s;
+        }
+
+        .arrow.active {
+            transform: rotate(180deg);
+        }
+
+        /* Modal de confirmación */
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            display: none;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .modal-text {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .modal-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .category-content.active {
+            max-height: 600px;
+        }
+
+        .exercise-item {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .exercise-item:last-child {
+            border-bottom: none;
+        }
+
+        .exercise-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .exercise-video {
+            width: 100%;
+            max-width: 560px;
+            height: 315px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .exercise-description {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 999;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Modal de confirmación -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-title">⚠️ Eliminar Cuenta</div>
+        <p class="modal-text">¿Estás seguro que deseas eliminar tu cuenta? Esta acción no se puede deshacer.</p>
+        <div class="modal-buttons">
+            <button class="modal-btn btn-cancel" id="cancelBtn">No</button>
+            <button class="modal-btn btn-delete" id="confirmDeleteBtn">Sí, eliminar</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <div class="gym-name">💪 PowerGym</div>
+        <button class="menu-toggle" id="menuToggle">Mi Cuenta</button>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" id="closeBtn">×</button>
+        
+        <div class="sidebar-header">
+            <div class="profile-image-container" id="profileContainer">
+                <img src="https://via.placeholder.com/120" alt="Perfil" class="profile-image" id="profileImage">
+                <div class="camera-overlay">
+                    📷
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="menu-item" id="accountBtn">
+                <span class="menu-icon">👤</span>
+                <span>Mi Cuenta</span>
+            </div>
+            <div class="menu-item">
+                <span class="menu-icon">⚙️</span>
+                <span>Ajustes</span>
+            </div>
+            <div class="menu-item">
+                <span class="menu-icon">🚪</span>
+                <span id="logoutMenu">Cerrar Sesión</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="exercises-container">
+            <!-- Parte Superior -->
+            <div class="exercise-category">
+                <div class="category-header" onclick="toggleCategory('upper')">
+                    <span class="category-title">← 🏋️ Ejercicios Parte Superior del Cuerpo</span>
+                    <span class="arrow" id="arrow-upper">▼</span>
+                </div>
+                <div class="category-content" id="content-upper">
+                    <div class="exercise-item">
+                        <div class="exercise-title">Press de Banca</div>
+                        <iframe class="exercise-video" 
+                                src="https://www.youtube.com/embed/rT7DgCr-3pg" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                        <p class="exercise-description">
+                            Ejercicio fundamental para desarrollar el pecho, hombros y tríceps. Acuéstate en un banco plano, 
+                            agarra la barra con las manos separadas a la altura de los hombros y bájala controladamente hasta 
+                            el pecho. Empuja hacia arriba hasta extender completamente los brazos.
+                        </p>
+                    </div>
+                    <div class="exercise-item">
+                        <div class="exercise-title">Dominadas</div>
+                        <iframe class="exercise-video" 
+                                src="https://www.youtube.com/embed/eGo4IYlbE5g" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                        <p class="exercise-description">
+                            Excelente para desarrollar la espalda y bíceps. Cuélgate de una barra con las palmas hacia adelante, 
+                            tira de tu cuerpo hacia arriba hasta que tu barbilla supere la barra. Baja controladamente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parte Inferior -->
+            <div class="exercise-category">
+                <div class="category-header" onclick="toggleCategory('lower')">
+                    <span class="category-title">← 🦵 Ejercicios Parte Inferior del Cuerpo</span>
+                    <span class="arrow" id="arrow-lower">▼</span>
+                </div>
+                <div class="category-content" id="content-lower">
+                    <div class="exercise-item">
+                        <div class="exercise-title">Sentadillas</div>
+                        <iframe class="exercise-video" 
+                                src="https://www.youtube.com/embed/ultWZbUMPL8" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                        <p class="exercise-description">
+                            El rey de los ejercicios para piernas. Trabaja cuádriceps, glúteos e isquiotibiales. Coloca la barra 
+                            sobre los hombros, baja flexionando las rodillas hasta que los muslos estén paralelos al suelo y sube.
+                        </p>
+                    </div>
+                    <div class="exercise-item">
+                        <div class="exercise-title">Peso Muerto</div>
+                        <iframe class="exercise-video" 
+                                src="https://www.youtube.com/embed/ytGaGIn3SjE" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                        <p class="exercise-description">
+                            Ejercicio compuesto que trabaja toda la cadena posterior. Con la espalda recta, levanta la barra 
+                            del suelo extendiendo las caderas y rodillas simultáneamente hasta estar completamente erguido.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abdomen -->
+            <div class="exercise-category">
+                <div class="category-header" onclick="toggleCategory('abs')">
+                    <span class="category-title">← 🔥 Ejercicios de Abdomen</span>
+                    <span class="arrow" id="arrow-abs">▼</span>
+                </div>
+                <div class="category-content" id="content-abs">
+                    <div class="exercise-item">
+                        <div class="exercise-title">Plancha</div>
+                        <iframe class="exercise-video" 
+                                src="https://www.youtube.com/embed/ASdvN_XEl_c" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                        <p class="exercise-description">
+                            Ejercicio isométrico fundamental para el core. Apóyate sobre los antebrazos y puntas de los pies, 
+                            mantén el cuerpo recto como una tabla. Contrae el abdomen y mantén la posición.
+                        </p>
+                    </div>
+                    <div class="exercise-item">
+                        <div class="exercise-title">Crunches</div>
+                        <iframe class="exercise-video" 
+                                src="https://www.youtube.com/embed/Xyd_fa5zoEU" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                        <p class="exercise-description">
+                            Clásico ejercicio para abdominales. Acostado boca arriba con rodillas flexionadas, coloca las manos 
+                            detrás de la cabeza y eleva el torso contrayendo los abdominales. Baja controladamente.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="imageInput" accept="image/*">
+
+    <script>
+        // Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const closeBtn = document.getElementById('closeBtn');
+        const overlay = document.getElementById('overlay');
+        const deleteModal = document.getElementById('deleteModal');
+        const accountBtn = document.getElementById('accountBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+        });
+
+        closeBtn.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            deleteModal.classList.remove('active');
+        });
+
+        // Modal de eliminar cuenta
+        accountBtn.addEventListener('click', () => {
+            deleteModal.classList.add('active');
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            deleteModal.classList.remove('active');
+        });
+
+        confirmDeleteBtn.addEventListener('click', () => {
+            // Lógica para eliminar la cuenta
+            const token = localStorage.getItem('token');
+            const email = localStorage.getItem('lastEmail') || '';
+            if (!token || !email) {
+                alert('No se encontró usuario autenticado.');
+                return;
+            }
+            fetch('http://localhost:5000/api/usuario', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ email })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success || data.ok) {
+                    alert('Cuenta eliminada correctamente');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('lastEmail');
+                    window.location.href = 'index.html';
+                } else {
+                    alert(data.detail || 'Error al eliminar la cuenta');
+                }
+            })
+            .catch(() => {
+                alert('Error de conexión con el servidor');
+            });
+            deleteModal.classList.remove('active');
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+
+        // Image Upload
+        const profileContainer = document.getElementById('profileContainer');
+        const profileImage = document.getElementById('profileImage');
+        const imageInput = document.getElementById('imageInput');
+
+        profileContainer.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    profileImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Logout desde menú lateral
+        document.getElementById('logoutMenu').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        });
+
+        // Toggle Categories
+        function toggleCategory(category) {
+            const content = document.getElementById(`content-${category}`);
+            const arrow = document.getElementById(`arrow-${category}`);
+            content.classList.toggle('active');
+            arrow.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

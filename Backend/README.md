@@ -1,8 +1,4 @@
 ### alumno: Pablo Chiavetta
-## recordar:
-    -instalar alemic a la pc
-    -instalar pipx y hacerlo global con "pipx ensurepath"
-
 
 ## como funciona
 
