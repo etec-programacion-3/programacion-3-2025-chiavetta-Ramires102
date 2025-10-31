@@ -129,9 +129,7 @@ class UsuarioLogin(BaseModel):
         }
 
 
-@router.post(
-    "/api/registro", status_code=status.HTTP_201_CREATED, tags=["Autenticación"]
-)
+@router.post("/registro", status_code=status.HTTP_201_CREATED, tags=["Autenticación"])
 async def registrar(usuario: UsuarioRegistro):
     """
     Registrar un nuevo usuario en el sistema.
@@ -155,7 +153,7 @@ async def registrar(usuario: UsuarioRegistro):
     return resultado
 
 
-@router.post("/api/login", tags=["Autenticación"])
+@router.post("/login", tags=["Autenticación"])
 async def login(credenciales: UsuarioLogin):
     """
     Iniciar sesión con email y contrasena.
@@ -172,7 +170,7 @@ async def login(credenciales: UsuarioLogin):
     return resultado
 
 
-@router.put("/api/usuario/{usuario_id}", tags=["Usuarios"])
+@router.put("/usuario/{usuario_id}", tags=["Usuarios"])
 async def actualizar_usuario(usuario_id: int, datos: UsuarioActualizacion):
     """
     Actualizar los datos de un usuario existente.
@@ -224,7 +222,7 @@ async def actualizar_usuario(usuario_id: int, datos: UsuarioActualizacion):
     return resultado
 
 
-@router.delete("/api/usuarios/{id}")
+@router.delete("/usuarios/{id}")
 async def eliminar_usuario(id: int):
     resultado = servicio_usuario.eliminar_usuario(id)
 
@@ -242,28 +240,28 @@ async def home():
         "version": "1.0.0",
         "docs": "/docs",
         "endpoints": {
-            "registro": "/api/registro [POST]",
-            "login": "/api/login [POST]",
-            "actualizar_usuario": "/api/usuario/{usuario_id} [PUT]",
+            "registro": "/registro [POST]",
+            "login": "/login [POST]",
+            "actualizar_usuario": "/usuario/{usuario_id} [PUT]",
             "documentación": "/docs",
         },
     }
 
 
-@router.get("/api/health", tags=["General"])
+@router.get("/health", tags=["General"])
 async def health():
     """Health check para monitoreo"""
     return {"status": "ok", "service": "gymnastic-api"}
 
 
-@router.get("/api/usuarios/regitrados", tags=["Usuarios"])
+@router.get("/usuarios/registrados", tags=["Usuarios"])
 async def obtener_usuarios_de_prueba():
     """Ruta de prueba para obtener usuarios (no para producción)"""
     resultado = servicio_usuario.obtener_usuarios()
     return resultado
 
 
-@router.get("/api/usuarios/{id}", tags=["Usuarios"])
+@router.get("/usuarios/{id}", tags=["Usuarios"])
 async def obtener_usuario_por_id(id: int):
     """Ruta para obtener un usuario por ID"""
     resultado = servicio_usuario.obtener_usuario_por_id(id)
@@ -274,7 +272,7 @@ async def obtener_usuario_por_id(id: int):
     return resultado
 
 
-@router.get("/api/usuarios/rol/{rol}", tags=["Usuarios"])
+@router.get("/usuarios/rol/{rol}", tags=["Usuarios"])
 async def obtener_usuarios_por_rol(rol: str):
     """Ruta para obtener usuarios por rol"""
     resultado = servicio_usuario.obtener_usuarios_por_rol(rol)
@@ -288,21 +286,21 @@ async def obtener_usuarios_por_rol(rol: str):
 # --------------------------------rutas de clases-------------------------------------
 
 
-@router.get("/api/clase", tags=["Clases"])
+@router.get("/clase", tags=["Clases"])
 async def obtener_clases():
     """Ruta para obtener las clases del gym"""
     resultado = servicio_clase.obtener_clases()
     return resultado
 
 
-@router.get("/api/clase/{id}", tags=["Clases"])
+@router.get("/clase/{id}", tags=["Clases"])
 async def obtener_clase_por_id(id: int):
     """Ruta para obtener una clase del gym por ID"""
     resultado = servicio_clase.obtener_clase_por_id(id)
     return resultado
 
 
-@router.post("/api/clase", tags=["Clases"])
+@router.post("/clase", tags=["Clases"])
 async def agregar_clase(clase: ClaseRegistro):
     """Ruta para crear una nueva clase del gym"""
     resultado = servicio_clase.agregar_clase(
@@ -314,7 +312,7 @@ async def agregar_clase(clase: ClaseRegistro):
     return resultado
 
 
-@router.put("/api/clase/{id}", tags=["Clases"])
+@router.put("/clase/{id}", tags=["Clases"])
 async def actualizar_clase(id: int, clase: ClaseActualizacion):
     """Ruta para actualizar una clase del gym"""
     resultado = servicio_clase.actualizar_clase(
@@ -327,7 +325,7 @@ async def actualizar_clase(id: int, clase: ClaseActualizacion):
     return resultado
 
 
-@router.delete("/api/clase/{id}", tags=["Clases"])
+@router.delete("/clase/{id}", tags=["Clases"])
 async def eliminar_clase(id: int):
     """Ruta para eliminar una clase del gym"""
     resultado = servicio_clase.eliminar_clase(id)
@@ -337,21 +335,21 @@ async def eliminar_clase(id: int):
 # --------------------------------rutas de clasesProgramadas-------------------------------------
 
 
-@router.get("/api/clasesProgramadas", tags=["Clases Programadas"])
+@router.get("/clasesProgramadas", tags=["Clases Programadas"])
 async def obtener_clases_programadas():
     """Ruta para obtener las clases programadas del gym"""
     resultado = servicio_clase.obtener_clases_programadas()
     return resultado
 
 
-@router.get("/api/clasesProgramadas/{id}", tags=["Clases Programadas"])
+@router.get("/clasesProgramadas/{id}", tags=["Clases Programadas"])
 async def obtener_clase_programada_por_id(id: int):
     """Ruta para obtener una clase programada del gym por ID"""
     resultado = servicio_clase.obtener_clase_programada_por_id(id)
     return resultado
 
 
-@router.post("/api/clasesProgramadas", tags=["Clases Programadas"])
+@router.post("/clasesProgramadas", tags=["Clases Programadas"])
 async def agregar_clase_programada(clase_programada: ClaseProgramadaRegistro):
     """Ruta para crear una nueva clase programada del gym"""
     resultado = servicio_clase.agregar_clase_programada(
@@ -364,7 +362,7 @@ async def agregar_clase_programada(clase_programada: ClaseProgramadaRegistro):
     return resultado
 
 
-@router.put("/api/clasesProgramadas/{id}", tags=["Clases Programadas"])
+@router.put("/clasesProgramadas/{id}", tags=["Clases Programadas"])
 async def actualizar_clase_programada(
     id: int, clase_programada: ClaseProgramadaActualizacion
 ):
@@ -380,7 +378,7 @@ async def actualizar_clase_programada(
     return resultado
 
 
-@router.delete("/api/clasesProgramadas/{id}", tags=["Clases Programadas"])
+@router.delete("/clasesProgramadas/{id}", tags=["Clases Programadas"])
 async def eliminar_clase_programada(id: int):
     """Ruta para eliminar una clase programada del gym"""
     resultado = servicio_clase.eliminar_clase_programada(id)

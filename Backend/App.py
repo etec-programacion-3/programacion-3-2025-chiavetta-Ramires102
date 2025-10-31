@@ -6,6 +6,8 @@ from controladores import rutas
 
 app = FastAPI(title="API Gymnastic")
 
+app = FastAPI(root_path="/api")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
