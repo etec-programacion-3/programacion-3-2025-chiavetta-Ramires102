@@ -1,12 +1,18 @@
 import logging
 import sqlite3
 from datetime import datetime
+import jwt
+from datetime import datetime, timedelta
 
 import bcrypt
 
 from Base_de_datos.db import DatabaseManager
 
 logger = logging.getLogger(__name__)
+
+SECRET_KEY = "Repo_Ram_PC_2025_prueba"
+ALGORITHM = "HS256"
+TOKEN_EXP_MINUTES = 60  # Token válido por 1 hora
 
 if not logger.handlers:
     ch = logging.StreamHandler()
@@ -29,6 +35,29 @@ class servicio_de_usuario:
             contrasena_bytes = contrasena_bytes[:72]
             logger.info("Contraseña truncada a 72 bytes")
         return contrasena_bytes
+    
+    def _generar_token(self, usuario_id, email):
+        """Genera un token JWT con ID y email del usuario"""
+        payload = {
+            "sub": usuario_id,
+            "email": email,
+            "exp": datetime.utcnow() + timedelta(minutes=TOKEN_EXP_MINUTES)
+        }
+        token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+        return token
+
+    def _verificar_token(self, token):
+        """Verifica y decodifica un token JWT. Devuelve el payload o None si inválido."""
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            return payload
+        except jwt.ExpiredSignatureError:
+            return {"error": "Token expirado"}
+        except jwt.InvalidTokenError:
+            return {"error": "Token inválido"}
+
+    
+    
 
     def _normalizar_rol(self, Rol):
         """Normaliza y valida el rol. Devuelve el valor para almacenar en DB o None si inválido.
@@ -137,6 +166,10 @@ class servicio_de_usuario:
                 return {"error": "Contraseña incorrecta"}
 
             logger.info(f"Login exitoso para {Email}")
+
+            # Generar token JWT
+            token = self._generar_token(usuario[0], Email)
+
             return {
                 "exito": "Login exitoso",
                 "usuario": {
@@ -146,7 +179,9 @@ class servicio_de_usuario:
                     "Edad": usuario[3],
                     "Rol": usuario[5],
                 },
+                "token": token  # lo agregamos al resultado
             }
+
 
         except Exception as e:
             logger.error(f"Error interno en login: {e}", exc_info=True)
@@ -229,8 +264,16 @@ class servicio_de_usuario:
         except Exception as e:
             return {"error": f"Error interno: {e}"}
 
-    def eliminar_usuario(self, id):
+    def eliminar_usuario(self, id, token=None):
+        """Elimina un usuario validando token opcionalmente"""
         try:
+            if token:
+                validacion = self._verificar_token(token)
+                if "error" in validacion:
+                    return validacion
+                if validacion["sub"] != id:
+                    return {"error": "No autorizado para eliminar este usuario"}
+
             query = "DELETE FROM usuarios WHERE id = ?"
             self.db_manager.cursor.execute(query, (id,))
             self.db_manager.conn.commit()
@@ -244,6 +287,7 @@ class servicio_de_usuario:
             return {"error": f"Error en base de datos: {e}"}
         except Exception as e:
             return {"error": f"Error interno: {e}"}
+
 
     def obtener_usuarios(self):
         try:

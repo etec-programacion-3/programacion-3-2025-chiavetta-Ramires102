@@ -316,10 +316,147 @@
         .overlay.active {
             display: block;
         }
+
+        /* Estilos para el modal de sesión expirada */
+        .session-expired-modal {
+            position: fixed;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            z-index: 1002;
+            width: 90%;
+            max-width: 500px;
+            opacity: 0;
+            transition: all 0.5s ease-out;
+        }
+
+        .session-expired-modal.active {
+            top: 24px;
+            opacity: 1;
+        }
+
+        .session-expired-modal .modal-content {
+            position: relative;
+        }
+
+        .session-expired-modal .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, #ef4444, #f97316);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .modal-header {
+            padding: 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .alert-icon {
+            background: #fee2e2;
+            padding: 8px;
+            border-radius: 50%;
+            font-size: 24px;
+        }
+
+        .header-text {
+            flex: 1;
+        }
+
+        .header-text h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .header-text p {
+            color: #4b5563;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.2s;
+        }
+
+        .close-modal-btn:hover {
+            color: #4b5563;
+        }
+
+        .modal-actions {
+            padding: 16px 24px 24px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .login-again-btn {
+            flex: 1;
+            padding: 10px 20px;
+            background: linear-gradient(to right, #ef4444, #f97316);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-again-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .close-btn-secondary {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #4b5563;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn-secondary:hover {
+            color: #1f2937;
+        }
     </style>
 </head>
 <body>
     <div class="overlay" id="overlay"></div>
+
+    <!-- Modal de sesión expirada -->
+    <div class="session-expired-modal" id="sessionExpiredModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="alert-icon">⚠️</div>
+                <div class="header-text">
+                    <h3>Tu sesión ha expirado</h3>
+                    <p>Por tu seguridad, tu sesión se cerró automáticamente debido a inactividad.</p>
+                </div>
+                <button class="close-modal-btn" id="closeSessionModal">×</button>
+            </div>
+            <div class="modal-actions">
+                <button class="login-again-btn" id="loginAgainBtn">Iniciar sesión nuevamente</button>
+                <button class="close-btn-secondary" id="closeSessionBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal de confirmación -->
     <div class="modal" id="deleteModal">
@@ -333,7 +470,9 @@
 
     <div class="header">
         <div class="gym-name">💪 PowerGym</div>
-        <button class="menu-toggle" id="menuToggle">Mi Cuenta</button>
+            <div class="header-profile-image-container" id="headerProfileContainer" style="cursor:pointer;">
+                <img src="https://via.placeholder.com/120" alt="Perfil" class="profile-image" id="headerProfileImage" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+            </div>
     </div>
 
     <div class="sidebar" id="sidebar">
@@ -480,8 +619,64 @@
     <input type="file" id="imageInput" accept="image/*">
 
     <script>
-        // Menu Toggle
-        const menuToggle = document.getElementById('menuToggle');
+        // Función para verificar la expiración del token
+        function checkTokenExpiration() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const tokenParts = token.split('.');
+                if (tokenParts.length !== 3) throw new Error('Token inválido');
+
+                const payload = JSON.parse(atob(tokenParts[1]));
+                const expTime = payload.exp * 1000; // Convertir a milisegundos
+                const currentTime = Date.now();
+                const timeUntilExp = expTime - currentTime;
+
+                if (timeUntilExp <= 0) {
+                    // Token ya expirado
+                    showSessionExpiredModal();
+                } else {
+                    // Programar notificación para cuando expire
+                    setTimeout(showSessionExpiredModal, timeUntilExp);
+                }
+            } catch (error) {
+                console.error('Error al verificar el token:', error);
+            }
+        }
+
+        function showSessionExpiredModal() {
+            const modal = document.getElementById('sessionExpiredModal');
+            const overlay = document.getElementById('overlay');
+            modal.classList.add('active');
+            overlay.classList.add('active');
+            localStorage.removeItem('token'); // Limpiar el token expirado
+        }
+
+        // Event listeners para el modal de sesión expirada
+        document.getElementById('closeSessionModal').addEventListener('click', () => {
+            document.getElementById('sessionExpiredModal').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+            window.location.href = 'index.html';
+        });
+
+        document.getElementById('closeSessionBtn').addEventListener('click', () => {
+            document.getElementById('sessionExpiredModal').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+            window.location.href = 'index.html';
+        });
+
+        document.getElementById('loginAgainBtn').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // Verificar token al cargar la página
+        checkTokenExpiration();
+
+
+        // Header profile image opens sidebar
+        const headerProfileContainer = document.getElementById('headerProfileContainer');
+        const headerProfileImage = document.getElementById('headerProfileImage');
         const sidebar = document.getElementById('sidebar');
         const closeBtn = document.getElementById('closeBtn');
         const overlay = document.getElementById('overlay');
@@ -490,7 +685,7 @@
         const cancelBtn = document.getElementById('cancelBtn');
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-        menuToggle.addEventListener('click', () => {
+        headerProfileContainer.addEventListener('click', () => {
             sidebar.classList.add('active');
             overlay.classList.add('active');
         });
@@ -518,28 +713,28 @@
         confirmDeleteBtn.addEventListener('click', () => {
             // Lógica para eliminar la cuenta
             const token = localStorage.getItem('token');
+            const userId = localStorage.getItem('userId');
             const email = localStorage.getItem('lastEmail') || '';
-            if (!token || !email) {
+            if (!token || !userId) {
                 alert('No se encontró usuario autenticado.');
                 return;
             }
-            fetch('http://localhost:5000/api/usuario', {
+            fetch(`http://localhost:5000/usuarios/${userId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ email })
             })
             .then(res => res.json())
             .then(data => {
                 if (data.success || data.ok) {
                     alert('Cuenta eliminada correctamente');
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('lastEmail');
+                    localStorage.clear();
                     window.location.href = 'index.html';
+                    return;
                 } else {
                     alert(data.detail || 'Error al eliminar la cuenta');
+                    return;
                 }
             })
             .catch(() => {
@@ -565,10 +760,26 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     profileImage.src = e.target.result;
+                        // Actualizar también la imagen del header
+                        const headerProfileImage = document.getElementById('headerProfileImage');
+                        if (headerProfileImage) {
+                            headerProfileImage.src = e.target.result;
+                        }
+                        // Guardar la imagen en localStorage
+                        localStorage.setItem('profileImage', e.target.result);
                 };
                 reader.readAsDataURL(file);
             }
         });
+
+            // Al cargar la página, recuperar la imagen de perfil si existe y mostrarla en el header y sidebar
+            window.addEventListener('DOMContentLoaded', () => {
+                const savedImage = localStorage.getItem('profileImage');
+                if (savedImage) {
+                    profileImage.src = savedImage;
+                    headerProfileImage.src = savedImage;
+                }
+            });
 
         // Logout desde menú lateral
         document.getElementById('logoutMenu').addEventListener('click', () => {
