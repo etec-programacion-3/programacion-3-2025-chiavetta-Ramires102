@@ -114,6 +114,11 @@ async function handleLogin(e) {
             if (!prev.includes(email)) prev.push(email);
             localStorage.setItem('prevAccounts', JSON.stringify(prev));
             localStorage.setItem('lastEmail', email);
+            // Guardar también el id y el nombre de usuario para usar en el dashboard
+            localStorage.setItem('userId', data.usuario.ID);
+            if (data.usuario && data.usuario.nombre) {
+                localStorage.setItem('username', data.usuario.nombre);
+            }
             showMessage('loginMessage', '¡Login exitoso! Redirigiendo al dashboard...', 'success');
             setTimeout(() => {
                 window.location.href = 'dashboard.html';
