@@ -4,12 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PowerGym - Dashboard</title>
+    <link rel="stylesheet" href="styles/dashboard.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -81,6 +77,12 @@
         .profile-image-container {
             position: relative;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px 0;
         }
 
         .profile-image {
@@ -90,20 +92,19 @@
             object-fit: cover;
             border: 4px solid white;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin: 0 auto;
         }
 
-        .camera-overlay {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        .profile-name {
+            margin-top: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            text-align: center;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .close-btn {
@@ -432,9 +433,6 @@
             transition: color 0.2s;
         }
 
-        .close-btn-secondary:hover {
-            color: #1f2937;
-        }
     </style>
 </head>
 <body>
@@ -468,8 +466,66 @@
         </div>
     </div>
 
+    <!-- Modal de actualización de cuenta -->
+    <div class="modal" id="updateModal">
+        <!-- Paso 1: Seleccionar qué actualizar -->
+        <div class="update-step active" id="stepSelectField">
+            <div class="modal-title">🔄 Actualizar Cuenta</div>
+            <p class="modal-text">Selecciona qué deseas actualizar:</p>
+            <div class="update-options">
+                <button class="update-option-btn" data-field="nombre">
+                    <span>👤</span> Nombre
+                </button>
+                <button class="update-option-btn" data-field="email">
+                    <span>📧</span> Email
+                </button>
+                <button class="update-option-btn" data-field="edad">
+                    <span>🎂</span> Edad
+                </button>
+                <button class="update-option-btn" data-field="contrasena">
+                    <span>🔒</span> Contraseña
+                </button>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn btn-cancel" id="cancelUpdateBtn">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Paso 2: Verificar contraseña actual -->
+        <div class="update-step" id="stepVerifyPassword">
+            <div class="modal-title">🔐 Verificar Identidad</div>
+            <p class="modal-text">Por seguridad, ingresa tu contraseña actual:</p>
+            <div class="form-group">
+                <label for="currentPassword">Contraseña actual:</label>
+                <input type="password" id="currentPassword" placeholder="Ingresa tu contraseña">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn btn-cancel" id="backToSelectBtn">Atrás</button>
+                <button class="modal-btn btn-primary" id="verifyPasswordBtn">Verificar</button>
+            </div>
+        </div>
+
+        <!-- Paso 3: Ingresar nuevo valor -->
+        <div class="update-step" id="stepNewValue">
+            <div class="modal-title" id="newValueTitle">✏️ Nuevo Valor</div>
+            <p class="modal-text" id="newValueText">Ingresa el nuevo valor:</p>
+            <div class="form-group">
+                <label for="newValue" id="newValueLabel">Nuevo valor:</label>
+                <input type="text" id="newValue" placeholder="">
+            </div>
+            <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+                <label for="confirmNewPassword">Confirmar nueva contraseña:</label>
+                <input type="password" id="confirmNewPassword" placeholder="Confirma tu nueva contraseña">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn btn-cancel" id="backToVerifyBtn">Atrás</button>
+                <button class="modal-btn btn-primary" id="updateValueBtn">Actualizar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="header">
-        <div class="gym-name">💪 PowerGym</div>
+        <div class="gym-name">💪 TecnoGym </div>
             <div class="header-profile-image-container" id="headerProfileContainer" style="cursor:pointer;">
                 <img src="https://via.placeholder.com/120" alt="Perfil" class="profile-image" id="headerProfileImage" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
             </div>
@@ -481,9 +537,7 @@
         <div class="sidebar-header">
             <div class="profile-image-container" id="profileContainer">
                 <img src="https://via.placeholder.com/120" alt="Perfil" class="profile-image" id="profileImage">
-                <div class="camera-overlay">
-                    📷
-                </div>
+                <div id="profileName" class="profile-name"></div>
             </div>
         </div>
 
@@ -492,7 +546,7 @@
                 <span class="menu-icon">👤</span>
                 <span>Mi Cuenta</span>
             </div>
-            <div class="menu-item">
+            <div class="menu-item" id="settingsBtn">
                 <span class="menu-icon">⚙️</span>
                 <span>Ajustes</span>
             </div>
@@ -619,6 +673,13 @@
     <input type="file" id="imageInput" accept="image/*">
 
     <script>
+        // API base URL (used by update/delete requests)
+        const API_URL = 'http://localhost:5000';
+
+    // Estado temporal para el flujo de actualización
+    let selectedField = '';
+    let currentEmail = localStorage.getItem('lastEmail') || '';
+
         // Función para verificar la expiración del token
         function checkTokenExpiration() {
             const token = localStorage.getItem('token');
@@ -719,7 +780,7 @@
                 alert('No se encontró usuario autenticado.');
                 return;
             }
-            fetch(`http://localhost:5000/usuarios/${userId}`, {
+            fetch(`${API_URL}/usuarios/${userId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -745,10 +806,206 @@
             overlay.classList.remove('active');
         });
 
+        // =============== SISTEMA DE ACTUALIZACIÓN ===============
+
+        const updateModal = document.getElementById('updateModal');
+        const settingsBtn = document.getElementById('settingsBtn');
+
+        // Open update modal from settings
+        settingsBtn && settingsBtn.addEventListener('click', () => {
+            updateModal.classList.add('active');
+            resetUpdateModal();
+        });
+
+        // Cancel update
+        const cancelUpdateBtn = document.getElementById('cancelUpdateBtn');
+        cancelUpdateBtn && cancelUpdateBtn.addEventListener('click', () => {
+            updateModal.classList.remove('active');
+            resetUpdateModal();
+        });
+
+        // Track selection
+        document.querySelectorAll('.update-option-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.update-option-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedField = btn.getAttribute('data-field');
+                setTimeout(() => showStep('stepVerifyPassword'), 200);
+            });
+        });
+
+        // Back to selection
+        const backToSelectBtn = document.getElementById('backToSelectBtn');
+        backToSelectBtn && backToSelectBtn.addEventListener('click', () => {
+            showStep('stepSelectField');
+            document.getElementById('currentPassword').value = '';
+        });
+
+        // Verify current password with backend
+        const verifyPasswordBtn = document.getElementById('verifyPasswordBtn');
+        verifyPasswordBtn && verifyPasswordBtn.addEventListener('click', () => {
+            const password = document.getElementById('currentPassword').value;
+            if (!password) return alert('Por favor ingresa tu contraseña');
+
+            // Use API_URL to verify
+            fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: currentEmail, contrasena: password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.exito || data.token || data.success) {
+                    configureNewValueStep();
+                    showStep('stepNewValue');
+                } else {
+                    alert('Contraseña incorrecta');
+                }
+            })
+            .catch(() => alert('Error al verificar contraseña'));
+        });
+
+        // Back from new value to verify
+        const backToVerifyBtn = document.getElementById('backToVerifyBtn');
+        backToVerifyBtn && backToVerifyBtn.addEventListener('click', () => {
+            showStep('stepVerifyPassword');
+            document.getElementById('newValue').value = '';
+            document.getElementById('confirmNewPassword').value = '';
+        });
+
+        // Update value submit
+        const updateValueBtn = document.getElementById('updateValueBtn');
+        updateValueBtn && updateValueBtn.addEventListener('click', () => {
+            const newValue = document.getElementById('newValue').value;
+            const token = localStorage.getItem('token');
+            if (!token) return alert('No se encontró sesión activa');
+            if (!newValue) return alert('Por favor ingresa un valor');
+
+            // Field specific validation
+            if (selectedField === 'email' && (!newValue.includes('@') || !newValue.includes('.'))) return alert('Email inválido');
+            if (selectedField === 'edad' && (isNaN(newValue) || newValue < 1 || newValue > 120)) return alert('Edad inválida');
+            if (selectedField === 'contrasena') {
+                const confirmPassword = document.getElementById('confirmNewPassword').value;
+                if (newValue.length < 8) return alert('La contraseña debe tener al menos 8 caracteres');
+                if (newValue !== confirmPassword) return alert('Las contraseñas no coinciden');
+            }
+
+            try {
+                const tokenParts = token.split('.');
+                const payload = JSON.parse(atob(tokenParts[1]));
+                const userId = payload.sub || localStorage.getItem('userId');
+
+                const updateData = {};
+                if (selectedField === 'nombre') updateData.nombre = newValue;
+                if (selectedField === 'email') updateData.email = newValue;
+                if (selectedField === 'edad') updateData.edad = parseInt(newValue);
+                if (selectedField === 'contrasena') updateData.contrasena = newValue;
+
+                fetch(`${API_URL}/usuarios/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.exito || data.success || data.ok) {
+                        alert('Actualización exitosa');
+                        if (selectedField === 'email') {
+                            localStorage.setItem('lastEmail', newValue);
+                            currentEmail = newValue;
+                            // Actualizar lo que aparece debajo de la imagen con el nuevo email
+                            const profileNameEl = document.getElementById('profileName');
+                            if (profileNameEl) profileNameEl.textContent = newValue;
+                        }
+                        if (selectedField === 'nombre') {
+                            localStorage.setItem('username', newValue);
+                            const profileNameEl = document.getElementById('profileName');
+                            if (profileNameEl) profileNameEl.textContent = newValue;
+                        }
+                        updateModal.classList.remove('active');
+                        resetUpdateModal();
+                    } else {
+                        alert(data.error || data.detail || 'Error al actualizar');
+                    }
+                })
+                .catch(() => alert('Error de conexión con el servidor'));
+            } catch (error) {
+                alert('Error al procesar la actualización');
+            }
+        });
+
+        // Helpers for update modal
+        function showStep(stepId) {
+            document.querySelectorAll('.update-step').forEach(step => step.classList.remove('active'));
+            document.getElementById(stepId).classList.add('active');
+        }
+
+        function resetUpdateModal() {
+            showStep('stepSelectField');
+            document.querySelectorAll('.update-option-btn').forEach(b => b.classList.remove('selected'));
+            const cp = document.getElementById('currentPassword'); if (cp) cp.value = '';
+            const nv = document.getElementById('newValue'); if (nv) nv.value = '';
+            const cnp = document.getElementById('confirmNewPassword'); if (cnp) cnp.value = '';
+            selectedField = '';
+        }
+
+        function configureNewValueStep() {
+            const newValueInput = document.getElementById('newValue');
+            const newValueLabel = document.getElementById('newValueLabel');
+            const newValueTitle = document.getElementById('newValueTitle');
+            const newValueText = document.getElementById('newValueText');
+            const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
+
+            switch(selectedField) {
+                case 'nombre':
+                    newValueTitle.textContent = '👤 Actualizar Nombre';
+                    newValueText.textContent = 'Ingresa tu nuevo nombre:';
+                    newValueLabel.textContent = 'Nuevo nombre:';
+                    newValueInput.type = 'text';
+                    newValueInput.placeholder = 'Ej: Juan Pérez';
+                    confirmPasswordGroup.style.display = 'none';
+                    break;
+                case 'email':
+                    newValueTitle.textContent = '📧 Actualizar Email';
+                    newValueText.textContent = 'Ingresa tu nuevo email:';
+                    newValueLabel.textContent = 'Nuevo email:';
+                    newValueInput.type = 'email';
+                    newValueInput.placeholder = 'Ej: correo@ejemplo.com';
+                    confirmPasswordGroup.style.display = 'none';
+                    break;
+                case 'edad':
+                    newValueTitle.textContent = '🎂 Actualizar Edad';
+                    newValueText.textContent = 'Ingresa tu nueva edad:';
+                    newValueLabel.textContent = 'Nueva edad:';
+                    newValueInput.type = 'number';
+                    newValueInput.placeholder = 'Ej: 25';
+                    confirmPasswordGroup.style.display = 'none';
+                    break;
+                case 'contrasena':
+                    newValueTitle.textContent = '🔒 Actualizar Contraseña';
+                    newValueText.textContent = 'Ingresa tu nueva contraseña (mínimo 8 caracteres):';
+                    newValueLabel.textContent = 'Nueva contraseña:';
+                    newValueInput.type = 'password';
+                    newValueInput.placeholder = 'Mínimo 8 caracteres';
+                    confirmPasswordGroup.style.display = 'block';
+                    break;
+            }
+        }
+
+        // =============== FIN SISTEMA DE ACTUALIZACIÓN ===============
+
         // Image Upload
         const profileContainer = document.getElementById('profileContainer');
         const profileImage = document.getElementById('profileImage');
         const imageInput = document.getElementById('imageInput');
+
+    // Mostrar el nombre de usuario debajo de la imagen (si existe)
+    const profileNameEl = document.getElementById('profileName');
+    const storedName = localStorage.getItem('username') || localStorage.getItem('lastEmail') || 'Usuario';
+    if (profileNameEl) profileNameEl.textContent = storedName;
 
         profileContainer.addEventListener('click', () => {
             imageInput.click();

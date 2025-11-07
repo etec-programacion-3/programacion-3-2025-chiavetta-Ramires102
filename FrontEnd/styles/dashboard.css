@@ -1,0 +1,505 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+/* Header */
+.header {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.gym-name {
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.menu-toggle {
+    background: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    color: #667eea;
+    transition: transform 0.2s;
+}
+
+.menu-toggle:hover {
+    transform: scale(1.05);
+}
+
+/* Sidebar Menu */
+.sidebar {
+    position: fixed;
+    right: -400px;
+    top: 0;
+    width: 400px;
+    height: 100vh;
+    background: white;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.2);
+    transition: right 0.3s ease;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.sidebar.active {
+    right: 0;
+}
+
+.sidebar-header {
+    position: relative;
+    height: 200px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-image-container {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 20px 0;
+}
+
+.profile-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    margin: 0 auto;
+}
+
+.profile-name {
+    margin-top: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+    text-align: center;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-content {
+    padding: 30px;
+}
+
+.menu-item {
+    padding: 15px;
+    margin: 10px 0;
+    background: #f5f5f5;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s;
+}
+
+.menu-item:hover {
+    background: #e0e0e0;
+}
+
+.menu-icon {
+    font-size: 24px;
+}
+
+/* Main Content */
+.main-content {
+    padding: 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.exercises-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.exercise-category {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.category-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: opacity 0.2s;
+}
+
+.category-header:hover {
+    opacity: 0.9;
+}
+
+.category-title {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.arrow {
+    font-size: 20px;
+    transition: transform 0.3s;
+}
+
+.arrow.active {
+    transform: rotate(180deg);
+}
+
+/* Modal de confirmación */
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    display: none;
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal.active {
+    display: block;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.modal-text {
+    color: #666;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s;
+}
+
+.modal-btn:hover {
+    transform: scale(1.05);
+}
+
+.btn-cancel {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.category-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.category-content.active {
+    max-height: 600px;
+}
+
+.exercise-item {
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.exercise-item:last-child {
+    border-bottom: none;
+}
+
+.exercise-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.exercise-video {
+    width: 100%;
+    max-width: 560px;
+    height: 315px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.exercise-description {
+    color: #666;
+    line-height: 1.6;
+}
+
+#imageInput {
+    display: none;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    z-index: 999;
+}
+
+.overlay.active {
+    display: block;
+}
+
+/* Estilos para el modal de sesión expirada */
+.session-expired-modal {
+    position: fixed;
+    top: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    z-index: 1002;
+    width: 90%;
+    max-width: 500px;
+    opacity: 0;
+    transition: all 0.5s ease-out;
+}
+
+.session-expired-modal.active {
+    top: 24px;
+    opacity: 1;
+}
+
+.session-expired-modal .modal-content {
+    position: relative;
+}
+
+.session-expired-modal .modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(to right, #ef4444, #f97316);
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header {
+    padding: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.alert-icon {
+    background: #fee2e2;
+    padding: 8px;
+    border-radius: 50%;
+    font-size: 24px;
+}
+
+.header-text {
+    flex: 1;
+}
+
+.header-text h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.header-text p {
+    color: #4b5563;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.close-modal-btn:hover {
+    color: #4b5563;
+}
+
+.modal-actions {
+    padding: 16px 24px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.login-again-btn {
+    flex: 1;
+    padding: 10px 20px;
+    background: linear-gradient(to right, #ef4444, #f97316);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.login-again-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.close-btn-secondary {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    color: #4b5563;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-btn-secondary:hover {
+    color: #1f2937;
+}
+
+/* Estilos para el modal de actualización */
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.update-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.update-option-btn {
+    padding: 15px;
+    background: #f5f5f5;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+.update-option-btn:hover {
+    background: #e0e0e0;
+}
+
+.update-option-btn.selected {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.update-step {
+    display: none;
+}
+
+.update-step.active {
+    display: block;
+}
