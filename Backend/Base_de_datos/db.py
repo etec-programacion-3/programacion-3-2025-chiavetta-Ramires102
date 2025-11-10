@@ -52,6 +52,7 @@ class DatabaseManager:
             Edad INTEGER,
             Contraseña TEXT NOT NULL,
             Rol TEXT DEFAULT 'Usuario',
+            imagen_perfil TEXT,
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         )
         """

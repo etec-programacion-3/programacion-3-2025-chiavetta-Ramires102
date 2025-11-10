@@ -169,6 +169,22 @@ async def login(credenciales: UsuarioLogin):
         )
     return resultado
 
+@router.post("/usuario/{usuario_id}/verify-password", tags=["Autenticación"])
+async def verificar_contrasena(usuario_id: int, credenciales: UsuarioLogin):
+    """
+    Verificar la contraseña de un usuario.
+    - **usuario_id**: ID del usuario
+    - **contrasena**: Contraseña a verificar
+    """
+    resultado = servicio_usuario.verificar_contrasena_usuario(
+        usuario_id=usuario_id, contrasena=credenciales.contrasena
+    )
+    if "error" in resultado:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=resultado["error"]
+        )
+    return {"valid": True}
+
 
 @router.put("/usuario/{usuario_id}", tags=["Usuarios"])
 async def actualizar_usuario(usuario_id: int, datos: UsuarioActualizacion):
@@ -293,10 +309,10 @@ async def obtener_clases():
     return resultado
 
 
-@router.get("/clase/{id}", tags=["Clases"])
-async def obtener_clase_por_id(id: int):
-    """Ruta para obtener una clase del gym por ID"""
-    resultado = servicio_clase.obtener_clase_por_id(id)
+@router.get("/clase/{nombre}", tags=["Clases"])
+async def obtener_clase_por_nombre(nombre: str):
+    """Ruta para obtener una clase del gym por nombre"""
+    resultado = servicio_clase.obtener_clase_por_nombre(nombre)
     return resultado
 
 
@@ -382,4 +398,57 @@ async def actualizar_clase_programada(
 async def eliminar_clase_programada(id: int):
     """Ruta para eliminar una clase programada del gym"""
     resultado = servicio_clase.eliminar_clase_programada(id)
+    return resultado
+
+# --------------------------------rutas para imagen de perfil-------------------------------------
+
+from fastapi import File, UploadFile
+import shutil
+import os
+
+@router.post("/usuario/{usuario_id}/imagen_perfil", tags=["Usuarios"])
+async def subir_imagen_perfil(usuario_id: int, file: UploadFile = File(...)):
+    """
+    Subir o actualizar la imagen de perfil de un usuario.
+
+    - **usuario_id**: ID del usuario
+    - **file**: Archivo de imagen
+    """
+    try:
+        # Crear directorio si no existe
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "imagen_perfil")
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Guardar archivo con nombre único basado en el ID de usuario
+        file_extension = os.path.splitext(file.filename)[1]
+        file_path = os.path.join(upload_dir, f"user_{usuario_id}{file_extension}")
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Actualizar la ruta en la base de datos
+        resultado = servicio_usuario.subir_imagen_perfil(
+            usuario_id=usuario_id,
+            ruta_imagen=f"/imagen_perfil/user_{usuario_id}{file_extension}"
+        )
+        
+        if "error" in resultado:
+            return resultado
+        
+        return {
+            "exito": "Imagen subida correctamente",
+            "ruta": f"/imagen_perfil/user_{usuario_id}{file_extension}"
+        }
+    except Exception as e:
+        return {"error": f"Error al subir la imagen: {str(e)}"}
+
+    if "error" in resultado:
+        if "no encontrado" in resultado["error"].lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=resultado["error"]
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=resultado["error"]
+        )
+
     return resultado

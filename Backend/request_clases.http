@@ -1,11 +1,11 @@
 ### clases
-GET http://localhost:8000/api/clase
+GET http://localhost:5000/clase
 
 ### obtener una clase en espesifico
-GET http://localhost:8000/api/clase/4
+GET http://localhost:5000/clase/Yoga
 
 ### descripcion y duracion
-POST http://localhost:8000/api/clase
+POST http://localhost:5000/clase
 Content-Type: application/json
 
 {
@@ -16,7 +16,7 @@ Content-Type: application/json
 }
 
 ### actualizar datos
-PUT http://localhost:8000/api/clase/2
+PUT http://localhost:5000/clase/2
 Content-Type: application/json
 
 {
@@ -25,4 +25,4 @@ Content-Type: application/json
 }
 
 ### eliminar clase
-DELETE http://localhost:8000/api/clase/2
+DELETE http://localhost:5000/clase/2

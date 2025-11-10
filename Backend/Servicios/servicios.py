@@ -92,6 +92,29 @@ class servicio_de_usuario:
         contrasena_bytes = self._truncar_contrasena(contrasena)
         hash_bytes = hash_almacenado.encode("utf-8")
         return bcrypt.checkpw(contrasena_bytes, hash_bytes)
+    
+    def verificar_contrasena_usuario(self, usuario_id: int, contrasena: str):
+        """Verificar la contraseña de un usuario específico"""
+        try:
+            # Buscar usuario
+            query = "SELECT Contraseña FROM usuarios WHERE id = ?"
+            self.db_manager.cursor.execute(query, (usuario_id,))
+            resultado = self.db_manager.cursor.fetchone()
+
+            if not resultado:
+                return {"error": "Usuario no encontrado"}
+
+            contrasena_hasheada = resultado[0]
+            is_valid = self._verificar_contrasena(contrasena, contrasena_hasheada)
+
+            if not is_valid:
+                return {"error": "Contraseña incorrecta"}
+
+            return {"valid": True}
+
+        except Exception as e:
+            logger.error(f"Error al verificar contraseña: {e}", exc_info=True)
+            return {"error": f"Error interno: {e}"}
 
     def registrar_usuario(self, Nombre, Email, Edad, contrasena, Rol):
         """Servicio para registrar un nuevo usuario"""
@@ -318,7 +341,7 @@ class servicio_de_usuario:
 
     def obtener_usuario_por_id(self, id):
         try:
-            query = "SELECT id, Nombre, Email, Edad, Rol, fecha_creacion FROM usuarios WHERE id = ?"
+            query = "SELECT id, Nombre, Email, Edad, Rol, fecha_creacion, imagen_perfil FROM usuarios WHERE id = ?"
             self.db_manager.cursor.execute(query, (id,))
             usuario = self.db_manager.cursor.fetchone()
 
@@ -332,6 +355,7 @@ class servicio_de_usuario:
                 "Edad": usuario[3],
                 "Rol": usuario[4],
                 "fecha_creacion": usuario[5],
+                "imagen_perfil": usuario[6],
             }
 
             return {"usuario": resultado}
@@ -378,4 +402,27 @@ class servicio_de_usuario:
             logger.error(
                 f"Error interno al obtener usuarios por rol: {e}", exc_info=True
             )
+            return {"error": f"Error interno: {e}"}
+
+    def subir_imagen_perfil(self, usuario_id, ruta_imagen):
+        """Servicio para subir o actualizar la imagen de perfil de un usuario"""
+        try:
+            # Verificar si el usuario existe
+            query_select = "SELECT * FROM usuarios WHERE id = ?"
+            self.db_manager.cursor.execute(query_select, (usuario_id,))
+            usuario = self.db_manager.cursor.fetchone()
+            if not usuario:
+                return {"error": "Usuario no encontrado"}
+
+            # Actualizar la ruta de la imagen de perfil
+            query_update = "UPDATE usuarios SET imagen_perfil = ? WHERE id = ?"
+            self.db_manager.cursor.execute(query_update, (ruta_imagen, usuario_id))
+            self.db_manager.conn.commit()
+
+            return {"exito": "Imagen de perfil actualizada correctamente"}
+
+        except sqlite3.Error as e:
+            self.db_manager.conn.rollback()
+            return {"error": f"Error en base de datos: {e}"}
+        except Exception as e:
             return {"error": f"Error interno: {e}"}
