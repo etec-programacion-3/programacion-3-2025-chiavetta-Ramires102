@@ -120,15 +120,15 @@ class servicio_de_clase:
             logger.error(f"Error al eliminar clase: {e}")
             return {"error": f"Error interno: {e}"}
 
-    def obtener_clase_por_id(self, id):
-        """Servicio para obtener una clase del gym por ID"""
+    def obtener_clase_por_nombre(self, nombre):
+        """Servicio para obtener una clase del gym por nombre"""
         try:
-            logger.info(f"Obteniendo clase por ID: {id}")
-            query = "SELECT * FROM clase_del_gym WHERE id = ?"
-            self.db_manager.cursor.execute(query, (id,))
+            logger.info(f"Obteniendo clase por nombre: {nombre}")
+            query = "SELECT * FROM clase_del_gym WHERE Nombre = ?"
+            self.db_manager.cursor.execute(query, (nombre,))
             clase = self.db_manager.cursor.fetchone()
             if clase is None:
-                logger.warning(f"Clase no encontrada con ID: {id}")
+                logger.warning(f"Clase no encontrada con nombre: {nombre}")
                 return {"error": "Clase no encontrada"}
 
             resultado = {
@@ -139,7 +139,7 @@ class servicio_de_clase:
             }
             return {"clase": resultado}
         except Exception as e:
-            logger.error(f"Error al obtener clase por ID: {e}")
+            logger.error(f"Error al obtener clase por nombre: {e}")
             return {"error": f"Error interno: {e}"}
 
     # --------------------------------servicios de clasesProgramadas-------------------------------------

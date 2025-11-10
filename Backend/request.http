@@ -35,7 +35,7 @@ POST http://localhost:5000/login
 Content-Type: application/json
 
 {
-  "email": "juan@example2.com",
+  "email": "petecito@example.com",
   "contrasena": "miPassword12"
 }
 
