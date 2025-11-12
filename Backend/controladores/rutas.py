@@ -1,6 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 
+# Modelo específico para verificación de contraseña
+class PasswordVerifyRequest(BaseModel):
+    contrasena: str = Field(..., min_length=8)
+
 from Servicios.servicios import servicio_de_usuario
 from Servicios.servicios_clases import servicio_de_clase
 
@@ -170,14 +174,14 @@ async def login(credenciales: UsuarioLogin):
     return resultado
 
 @router.post("/usuario/{usuario_id}/verify-password", tags=["Autenticación"])
-async def verificar_contrasena(usuario_id: int, credenciales: UsuarioLogin):
+async def verificar_contrasena(usuario_id: int, datos: PasswordVerifyRequest):
     """
     Verificar la contraseña de un usuario.
     - **usuario_id**: ID del usuario
     - **contrasena**: Contraseña a verificar
     """
     resultado = servicio_usuario.verificar_contrasena_usuario(
-        usuario_id=usuario_id, contrasena=credenciales.contrasena
+        usuario_id=usuario_id, contrasena=datos.contrasena
     )
     if "error" in resultado:
         raise HTTPException(

@@ -36,8 +36,23 @@ export const authService = {
   },
 
   verifyPassword: async (userId: number, data: VerifyPasswordRequest): Promise<boolean> => {
-    const response = await api.post(`/usuario/${userId}/verify-password`, data);
-    return response.data.valid;
+    try {
+      const response = await api.post(`/usuario/${userId}/verify-password`, data);
+      const resp = response.data;
+      // Log para debugging en caso de respuestas inesperadas
+      console.debug('verifyPassword response:', response.status, resp);
+
+      // Aceptar varias formas comunes de respuesta
+      if (typeof resp === 'boolean') return resp;
+      if (resp && typeof resp.valid === 'boolean') return resp.valid;
+      if (resp && typeof resp.success === 'boolean') return resp.success;
+      // Si status 200 y no hay forma conocida, asumimos válido (ajustable según backend)
+      if (response.status === 200) return true;
+      return false;
+    } catch (error: any) {
+      console.error('verifyPassword error:', error.response?.status, error.response?.data || error.message);
+      return false;
+    }
   },
 
   deleteUser: async (userId: number): Promise<void> => {
