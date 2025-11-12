@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authUtils } from '../utils/auth.ts';
-import { ExerciseCategory } from '../types';
 import api, { authService } from '../services/api.ts';
 
 const Dashboard: React.FC = () => {
@@ -10,7 +10,6 @@ const Dashboard: React.FC = () => {
   const [profileImage, setProfileImage] = useState<string>(() => {
     const savedImage = authUtils.getProfileImageUrl();
     if (savedImage) {
-      // Construir URL completa desde la ruta relativa guardada
       const fullUrl = `${api.defaults.baseURL}${savedImage}`;
       return `${fullUrl}?t=${new Date().getTime()}`;
     }
@@ -18,10 +17,10 @@ const Dashboard: React.FC = () => {
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [updateField, setUpdateField] = useState<string>('');
   const [currentPassword, setCurrentPassword] = useState<string>('');
+  const [passwordVerified, setPasswordVerified] = useState<boolean>(false);
   const [newValue, setNewValue] = useState<string>('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
@@ -43,7 +42,7 @@ const Dashboard: React.FC = () => {
       setUserName(user.Nombre);
       setUserEmail(user.Email);
       setUserRole(user.Rol);
-      // Construir URL de imagen
+      
       let imageUrl = '';
       if (user.imagen_perfil) {
         imageUrl = `${api.defaults.baseURL}${user.imagen_perfil}`;
@@ -51,58 +50,42 @@ const Dashboard: React.FC = () => {
         imageUrl = `${api.defaults.baseURL}/static/default-profile.png`;
       }
 
-      // Agregar timestamp para evitar cache
       const timestamp = new Date().getTime();
       const finalImageUrl = `${imageUrl}?t=${timestamp}`;
 
-  // Guardar en localStorage la ruta relativa (como devuelve el backend)
-  // El backend devuelve algo como: /imagen_perfil/user_1.png
-  authUtils.setProfileImageUrl(user.imagen_perfil || '');
-
-  // Actualizar estado con timestamp (URL completa)
-  setProfileImage(finalImageUrl);
+      authUtils.setProfileImageUrl(user.imagen_perfil || '');
+      setProfileImage(finalImageUrl);
     } catch (error) {
       console.error('Error loading user data:', error);
     }
   };
 
   const handleProfileImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const userId = localStorage.getItem('userId');
-  if (!userId) return;
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
 
-  console.log('🔵 1. Archivo seleccionado:', file.name);
-
-  try {
-    const imageUrl = await authService.uploadProfileImage(parseInt(userId), file);
-    console.log('🟢 2. Respuesta del backend (imageUrl):', imageUrl);
-    
-  const fullImageUrl = `${api.defaults.baseURL}${imageUrl}`;
-  console.log('🟡 3. URL completa construida:', fullImageUrl);
-    
-  // Guardar la ruta relativa que devuelve el backend (no la URL completa)
-  authUtils.setProfileImageUrl(imageUrl);
-  console.log('🟠 4. Guardado en localStorage (ruta relativa):', authUtils.getProfileImageUrl());
-    
-    const timestamp = new Date().getTime();
-    const finalUrl = `${fullImageUrl}?t=${timestamp}`;
-    console.log('🔴 5. URL final con timestamp:', finalUrl);
-    
-    setProfileImage(finalUrl);
-    console.log('🟣 6. Estado actualizado');
-    
-  } catch (error) {
-    console.error('❌ Error:', error);
-    alert('Error al subir la imagen');
-    await loadUserData();
-  }
+    try {
+      const imageUrl = await authService.uploadProfileImage(parseInt(userId), file);
+      const fullImageUrl = `${api.defaults.baseURL}${imageUrl}`;
+      authUtils.setProfileImageUrl(imageUrl);
+      
+      const timestamp = new Date().getTime();
+      const finalUrl = `${fullImageUrl}?t=${timestamp}`;
+      setProfileImage(finalUrl);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al subir la imagen');
+      await loadUserData();
+    }
   };
 
   const handleUpdateField = (field: string) => {
     setUpdateField(field);
     setCurrentPassword('');
+    setPasswordVerified(false);
     setNewValue('');
     setUpdateModalOpen(true);
   };
@@ -128,7 +111,8 @@ const Dashboard: React.FC = () => {
     try {
       const isValid = await authService.verifyPassword(parseInt(userId), { contrasena: currentPassword });
       if (isValid) {
-        setUpdateModalOpen(true);
+        // Marca la contraseña como verificada para avanzar al siguiente paso
+        setPasswordVerified(true);
       } else {
         alert('Contraseña incorrecta');
       }
@@ -145,8 +129,12 @@ const Dashboard: React.FC = () => {
     try {
       await authService.updateUser(parseInt(userId), { [updateField]: newValue });
       await loadUserData();
-      setUpdateModalOpen(false);
-      alert('Datos actualizados correctamente');
+        setUpdateModalOpen(false);
+        setPasswordVerified(false);
+        setCurrentPassword('');
+        setNewValue('');
+        setUpdateField('');
+        alert('Datos actualizados correctamente');
     } catch (error) {
       console.error('Error updating value:', error);
       alert('Error al actualizar los datos');
@@ -158,78 +146,7 @@ const Dashboard: React.FC = () => {
     window.location.reload();
   };
 
-  const toggleCategory = (category: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(category)) {
-      newExpanded.delete(category);
-    } else {
-      newExpanded.add(category);
-    }
-    setExpandedCategories(newExpanded);
-  };
-
-  const exerciseCategories: ExerciseCategory[] = [
-    {
-      id: 'upper',
-      title: 'Ejercicios Parte Superior del Cuerpo',
-      exercises: [
-        {
-          id: 1,
-          title: 'Press de Banca',
-          description: 'Ejercicio fundamental para desarrollar el pecho, hombros y tríceps. Acuéstate en un banco plano, agarra la barra con las manos separadas a la altura de los hombros y bájala controladamente hasta el pecho. Empuja hacia arriba hasta extender completamente los brazos.',
-          videoUrl: 'https://www.youtube.com/embed/rT7DgCr-3pg',
-          category: 'upper'
-        },
-        {
-          id: 2,
-          title: 'Dominadas',
-          description: 'Excelente para desarrollar la espalda y bíceps. Cuélgate de una barra con las palmas hacia adelante, tira de tu cuerpo hacia arriba hasta que tu barbilla supere la barra. Baja controladamente.',
-          videoUrl: 'https://www.youtube.com/embed/eGo4IYlbE5g',
-          category: 'upper'
-        }
-      ]
-    },
-    {
-      id: 'lower',
-      title: 'Ejercicios Parte Inferior del Cuerpo',
-      exercises: [
-        {
-          id: 3,
-          title: 'Sentadillas',
-          description: 'El rey de los ejercicios para piernas. Trabaja cuádriceps, glúteos e isquiotibiales. Coloca la barra sobre los hombros, baja flexionando las rodillas hasta que los muslos estén paralelos al suelo y sube.',
-          videoUrl: 'https://www.youtube.com/embed/ultWZbUMPL8',
-          category: 'lower'
-        },
-        {
-          id: 4,
-          title: 'Peso Muerto',
-          description: 'Ejercicio compuesto que trabaja toda la cadena posterior. Con la espalda recta, levanta la barra del suelo extendiendo las caderas y rodillas simultáneamente hasta estar completamente erguido.',
-          videoUrl: 'https://www.youtube.com/embed/ytGaGIn3SjE',
-          category: 'lower'
-        }
-      ]
-    },
-    {
-      id: 'abs',
-      title: 'Ejercicios de Abdomen',
-      exercises: [
-        {
-          id: 5,
-          title: 'Plancha',
-          description: 'Ejercicio isométrico fundamental para el core. Apóyate sobre los antebrazos y puntas de los pies, mantén el cuerpo recto como una tabla. Contrae el abdomen y mantén la posición.',
-          videoUrl: 'https://www.youtube.com/embed/ASdvN_XEl_c',
-          category: 'abs'
-        },
-        {
-          id: 6,
-          title: 'Crunches',
-          description: 'Clásico ejercicio para abdominales. Acostado boca arriba con rodillas flexionadas, coloca las manos detrás de la cabeza y eleva el torso contrayendo los abdominales. Baja controladamente.',
-          videoUrl: 'https://www.youtube.com/embed/Xyd_fa5zoEU',
-          category: 'abs'
-        }
-      ]
-    }
-  ];
+  const navigate = useNavigate();
 
   return (
     <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
@@ -288,11 +205,11 @@ const Dashboard: React.FC = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px' }}>
             <img 
-            src={profileImage} 
-            alt="Perfil" 
-            data-profile-image="true"
-            style={{ width: '100px', height: '100px', borderRadius: '50%', border: '4px solid #667eea', marginBottom: '10px', objectFit: 'cover' }} 
-          />
+              src={profileImage} 
+              alt="Perfil" 
+              data-profile-image="true"
+              style={{ width: '100px', height: '100px', borderRadius: '50%', border: '4px solid #667eea', marginBottom: '10px', objectFit: 'cover' }} 
+            />
             <input
               type="file"
               id="imageInput"
@@ -374,10 +291,10 @@ const Dashboard: React.FC = () => {
               maxWidth: '400px'
             }}>
               <h3 style={{ marginBottom: '20px' }}>
-                {currentPassword ? 'Nuevo Valor' : 'Verificar Contraseña'}
+                {passwordVerified ? 'Nuevo Valor' : 'Verificar Contraseña'}
               </h3>
-              
-              {!currentPassword ? (
+
+              {!passwordVerified ? (
                 <>
                   <input
                     type="password"
@@ -394,7 +311,12 @@ const Dashboard: React.FC = () => {
                   />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <button
-                      onClick={() => setUpdateModalOpen(false)}
+                      onClick={() => {
+                        setUpdateModalOpen(false);
+                        setPasswordVerified(false);
+                        setCurrentPassword('');
+                        setNewValue('');
+                      }}
                       style={{
                         padding: '8px 16px',
                         background: '#e0e0e0',
@@ -438,6 +360,8 @@ const Dashboard: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <button
                       onClick={() => {
+                        // Volver al paso de verificación
+                        setPasswordVerified(false);
                         setCurrentPassword('');
                         setNewValue('');
                       }}
@@ -632,55 +556,111 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {exerciseCategories.map((category) => (
-            <div key={category.id} style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-              <div
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  padding: '20px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  transition: 'opacity 0.2s'
-                }}
-                onClick={() => toggleCategory(category.id)}
-              >
-                <span style={{ fontSize: '22px', fontWeight: 600 }}>← {category.title}</span>
-                <span style={{ fontSize: '20px', transition: 'transform 0.3s' }}>
-                  {expandedCategories.has(category.id) ? '▼' : '▶'}
-                </span>
-              </div>
-              <div style={{
-                maxHeight: expandedCategories.has(category.id) ? '600px' : '0',
-                overflow: 'hidden',
-                transition: 'max-height 0.3s ease'
-              }}>
-                {category.exercises.map((exercise) => (
-                  <div key={exercise.id} style={{ padding: '20px', borderBottom: '1px solid #e0e0e0' }}>
-                    <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '10px', color: '#333' }}>
-                      {exercise.title}
-                    </div>
-                    <iframe
-                      title={`Video de ${exercise.title}`}
-                      style={{ width: '100%', maxWidth: '560px', height: '315px', borderRadius: '8px', marginBottom: '10px' }}
-                      src={exercise.videoUrl}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                    <p style={{ color: '#666', lineHeight: '1.6' }}>
-                      {exercise.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+      {/* Main Content - Navigation Cards */}
+      <div style={{ padding: '60px 40px', maxWidth: '1200px', margin: '0 auto' }}>
+        <h1 style={{ color: 'white', fontSize: '42px', textAlign: 'center', marginBottom: '50px', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)' }}>
+          ¡Bienvenido, {userName}!
+        </h1>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+          {/* Ejercicios y Clases */}
+          <div
+            onClick={() => navigate('/ejercicios-y-clases')}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '40px',
+              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+              cursor: 'pointer',
+              transition: 'transform 0.3s, box-shadow 0.3s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-8px)';
+              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+            }}
+          >
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>💪</div>
+            <h2 style={{ fontSize: '24px', color: '#667eea', marginBottom: '10px', fontWeight: 600 }}>
+              Ejercicios y Clases
+            </h2>
+            <p style={{ color: '#666', fontSize: '16px' }}>
+              Explora rutinas de ejercicios y consulta el calendario de clases disponibles
+            </p>
+          </div>
+
+          {/* Clases Programadas */}
+          <div
+            onClick={() => navigate('/clases-programadas')}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '40px',
+              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+              cursor: 'pointer',
+              transition: 'transform 0.3s, box-shadow 0.3s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-8px)';
+              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+            }}
+          >
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📅</div>
+            <h2 style={{ fontSize: '24px', color: '#667eea', marginBottom: '10px', fontWeight: 600 }}>
+              Clases Programadas
+            </h2>
+            <p style={{ color: '#666', fontSize: '16px' }}>
+              {userRole === 'Admin' ? 'Gestiona y programa nuevas clases' : 'Busca y reserva clases disponibles'}
+            </p>
+          </div>
+
+          {/* Tienda */}
+          <div
+            onClick={() => navigate('/tienda')}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '40px',
+              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+              cursor: 'pointer',
+              transition: 'transform 0.3s, box-shadow 0.3s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-8px)';
+              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
+            }}
+          >
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🛒</div>
+            <h2 style={{ fontSize: '24px', color: '#667eea', marginBottom: '10px', fontWeight: 600 }}>
+              Tienda
+            </h2>
+            <p style={{ color: '#666', fontSize: '16px' }}>
+              Adquiere productos, suplementos y equipamiento deportivo
+            </p>
+          </div>
         </div>
       </div>
     </div>
