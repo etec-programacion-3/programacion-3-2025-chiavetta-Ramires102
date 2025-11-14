@@ -157,7 +157,7 @@ class servicio_de_clase:
                     "nombre_entrenador": clase[1],
                     "email_entrenador": clase[2],
                     "nombre_clase": clase[3],
-                    "Duracion": clase[4],
+                    "duracion": clase[4],
                     "fecha_horario_al_que_va": clase[5],
                 }
                 for clase in clases_programadas
@@ -183,7 +183,7 @@ class servicio_de_clase:
                 "nombre_entrenador": clase_programada[1],
                 "email_entrenador": clase_programada[2],
                 "nombre_clase": clase_programada[3],
-                "Duracion": clase_programada[4],
+                "duracion": clase_programada[4],
                 "fecha_horario_al_que_va": clase_programada[5],
             }
             return {"clase_programada": resultado}

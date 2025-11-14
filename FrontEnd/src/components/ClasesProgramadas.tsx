@@ -1,81 +1,96 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { normalizeRole, isTrainer } from '../utils/auth.ts';
 import api from '../services/api.ts';
 
 interface Clase {
-  id: number;
-  entrenador: string;
+  id?: number;
+  ID?: number;
+  nombre_entrenador: string;
   email_entrenador: string;
   nombre_clase: string;
-  duracion: string;
-  horario: string;
-  fecha: string;
+  duracion: number | string;
+  fecha_horario_al_que_va: string;
 }
 
 const ClasesProgramadas: React.FC = () => {
-  const [userRole, setUserRole] = useState<string>('');
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [addClassModalOpen, setAddClassModalOpen] = useState(false);
   const [clases, setClases] = useState<Clase[]>([]);
+  const [expandedClassId, setExpandedClassId] = useState<number | null>(null);
   
   // Form fields
   const [entrenador, setEntrenador] = useState('');
   const [emailEntrenador, setEmailEntrenador] = useState('');
   const [nombreClase, setNombreClase] = useState('');
   const [duracion, setDuracion] = useState('');
-  const [horario, setHorario] = useState('');
   const [fecha, setFecha] = useState('');
 
   useEffect(() => {
-    loadUserRole();
-    loadClases();
-  }, []);
-
-  const loadUserRole = () => {
     const userId = localStorage.getItem('userId');
     if (!userId) {
-      window.location.href = '/';
+      navigate('/');
       return;
     }
 
-    api.get(`/usuarios/${userId}`)
-      .then(response => {
-        setUserRole(response.data.usuario.Rol);
-      })
-      .catch(error => {
-        console.error('Error loading user role:', error);
-      });
-  };
+    loadClases();
+  }, [navigate]);
 
   const loadClases = async () => {
     try {
-      // Aquí usarías tu ruta de API para obtener las clases
-      // const response = await api.get('/clases');
-      // setClases(response.data.clases);
-      
-      // Por ahora, como ejemplo:
-      setClases([]);
+      // Intentar obtener las clases desde la API
+      const response = await api.get('/clasesProgramadas');
+      console.debug('loadClases response:', response.status, response.data);
+
+      // Aceptar varias formas de respuesta: { clases_programadas: [...] } o directamente array
+      const data = response.data;
+      if (Array.isArray(data)) {
+        setClases(data as Clase[]);
+      } else if (data && Array.isArray(data.clases_programadas)) {
+        setClases(data.clases_programadas as Clase[]);
+      } else if (data && Array.isArray(data.results)) {
+        setClases(data.results as Clase[]);
+      } else {
+        // Si la respuesta no contiene clases, dejar vacío e informar
+        console.warn('loadClases: estructura de respuesta inesperada', data);
+        setClases([]);
+      }
     } catch (error) {
       console.error('Error loading clases:', error);
+      setClases([]);
     }
   };
 
   const handleAddClass = async () => {
-    if (!entrenador || !emailEntrenador || !nombreClase || !duracion || !horario || !fecha) {
+    if (!entrenador || !emailEntrenador || !nombreClase || !duracion || !fecha) {
       alert('Por favor completa todos los campos');
       return;
     }
 
+    // Validar que el entrenador existe y tiene rol de entrenador
     try {
-      // Aquí usarías tu ruta de API para crear la clase
-      // await api.post('/clases', {
-      //   entrenador,
-      //   email_entrenador: emailEntrenador,
-      //   nombre_clase: nombreClase,
-      //   duracion,
-      //   horario,
-      //   fecha
-      // });
+      const usuariosResponse = await api.get('/usuarios/registrados');
+      const usuarios = usuariosResponse.data.usuarios || usuariosResponse.data;
+      
+      const trainerExists = usuarios.find((u: any) => 
+        (u.Email === emailEntrenador) && 
+        (normalizeRole(u.Rol) === 'entrenador' || normalizeRole(u.Rol) === 'admin')
+      );
+
+      if (!trainerExists) {
+        alert('El email ingresado no corresponde a un entrenador registrado');
+        return;
+      }
+
+      // Enviar datos a la API
+      await api.post('/clasesProgramadas', {
+        nombre_entrenador: entrenador,
+        email_entrenador: emailEntrenador,
+        nombre_clase: nombreClase,
+        duracion: parseFloat(duracion),
+        fecha_horario_al_que_va: `${fecha}`
+      });
 
       alert('Clase agregada correctamente');
       setAddClassModalOpen(false);
@@ -92,20 +107,19 @@ const ClasesProgramadas: React.FC = () => {
     setEmailEntrenador('');
     setNombreClase('');
     setDuracion('');
-    setHorario('');
     setFecha('');
   };
 
   const filteredClases = clases.filter(clase =>
     clase.nombre_clase.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    clase.entrenador.toLowerCase().includes(searchQuery.toLowerCase())
+    clase.nombre_entrenador.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
+    <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", background: "var(--bg-gradient)", minHeight: "100vh" }}>
       {/* Header */}
       <div style={{
-        background: 'rgba(255, 255, 255, 0.1)',
+        background: 'var(--overlay)',
         backdropFilter: 'blur(10px)',
         padding: '20px 40px',
         display: 'flex',
@@ -115,7 +129,7 @@ const ClasesProgramadas: React.FC = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <button
-            onClick={() => window.location.href = '/dashboard'}
+            onClick={() => navigate('/dashboard')}
             style={{
               background: 'rgba(255, 255, 255, 0.2)',
               border: 'none',
@@ -132,16 +146,16 @@ const ClasesProgramadas: React.FC = () => {
           >
             ←
           </button>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)' }}>
-            📅 Clases Programadas
+      <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--text)', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)' }}>
+        📅 Clases Programadas
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ padding: '60px', maxWidth: '18000px', margin: '0 auto' }}>
         {/* Search Bar and Add Button */}
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
+  <div style={{ display: 'flex', gap: '25px', marginBottom: '40px' }}>
           <input
             type="text"
             placeholder="Buscar clases..."
@@ -149,92 +163,126 @@ const ClasesProgramadas: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               flex: 1,
-              padding: '15px 20px',
-              fontSize: '16px',
+              padding: '20px 25px',
+              fontSize: '18px',
               border: 'none',
-              borderRadius: '10px',
-              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+              borderRadius: '12px',
+              boxShadow: '0 6px 12px rgba(0, 0, 0, 0.1)',
               outline: 'none'
             }}
           />
           
-          {userRole === 'Admin' && (
+          {isTrainer() && (
             <button
               onClick={() => setAddClassModalOpen(true)}
               style={{
-                background: '#4ade80',
+                background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%)',
                 color: 'white',
                 border: 'none',
-                padding: '15px 30px',
-                borderRadius: '10px',
-                fontSize: '16px',
+                padding: '20px 40px',
+                borderRadius: '12px',
+                fontSize: '18px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 6px 12px rgba(0, 0, 0, 0.1)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
+                gap: '12px',
                 transition: 'transform 0.2s'
               }}
               onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              <span style={{ fontSize: '20px' }}>➕</span>
+              <span style={{ fontSize: '24px' }}>➕</span>
               Agregar Nueva Clase
             </button>
           )}
         </div>
 
         {/* Classes List */}
-        <div style={{ background: 'white', borderRadius: '12px', padding: '30px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', minHeight: '400px' }}>
+  <div style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '40px', boxShadow: '0 6px 12px rgba(0, 0, 0, 0.1)', minHeight: '600px' }}>
           {filteredClases.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.3 }}>📚</div>
-              <p style={{ color: '#999', fontSize: '18px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '500px' }}>
+              <div style={{ fontSize: '96px', marginBottom: '30px', opacity: 0.3 }}>📚</div>
+              <p style={{ color: '#999', fontSize: '22px', textAlign: 'center' }}>
                 {searchQuery ? 'No se encontraron clases' : 'No hay clases programadas en este momento'}
               </p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {filteredClases.map((clase) => (
-                <div
-                  key={clase.id}
-                  style={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    padding: '20px',
-                    transition: 'box-shadow 0.2s',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                    <div>
-                      <h3 style={{ fontSize: '20px', color: '#667eea', marginBottom: '10px', fontWeight: 600 }}>
-                        {clase.nombre_clase}
-                      </h3>
-                      <p style={{ color: '#666', marginBottom: '5px' }}>
-                        👤 Entrenador: {clase.entrenador}
-                      </p>
-                      <p style={{ color: '#666', marginBottom: '5px' }}>
-                        📧 {clase.email_entrenador}
-                      </p>
-                      <p style={{ color: '#666', marginBottom: '5px' }}>
-                        ⏱️ Duración: {clase.duracion}
-                      </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {filteredClases.map((clase) => {
+                const claseId = clase.id || clase.ID || 0;
+                const isExpanded = expandedClassId === claseId;
+                
+                return (
+                  <div
+                    key={claseId}
+                    onClick={() => setExpandedClassId(isExpanded ? null : claseId)}
+                    style={{
+                      border: '2px solid rgba(255,255,255,0.06)',
+                      borderRadius: '12px',
+                      padding: '30px',
+                      transition: 'box-shadow 0.2s, border-color 0.2s, background-color 0.2s',
+                      cursor: 'pointer',
+                      backgroundColor: isExpanded ? '#f0f5ff' : '#f9f9f9'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.1)';
+                      e.currentTarget.style.borderColor = '#667eea';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.borderColor = '#e0e0e0';
+                    }}
+                  >
+                    {/* Vista Resumida */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h3 style={{ fontSize: '26px', color: 'var(--accent)', marginBottom: '8px', fontWeight: 600 }}>
+                          {clase.nombre_clase}
+                        </h3>
+                        <p style={{ color: 'var(--muted)', marginBottom: '8px', fontSize: '16px' }}>
+                          👤 {clase.nombre_entrenador}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '8px', fontSize: '18px' }}>
+                          📅 {new Date(clase.fecha_horario_al_que_va).toLocaleDateString()}
+                        </p>
+                        <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+                          {isExpanded ? '▼ Cerrar detalles' : '▶ Ver detalles'}
+                        </p>
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ color: '#667eea', fontWeight: 600, marginBottom: '5px' }}>
-                        📅 {clase.fecha}
-                      </p>
-                      <p style={{ color: '#667eea', fontWeight: 600 }}>
-                        🕐 {clase.horario}
-                      </p>
-                    </div>
+
+                    {/* Vista Expandida */}
+                    {isExpanded && (
+                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #eee' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                          <div>
+                            <p style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '5px' }}>Nombre del Entrenador</p>
+                            <p style={{ fontSize: '16px', color: 'var(--text)', fontWeight: 600 }}>{clase.nombre_entrenador}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '5px' }}>Email del Entrenador</p>
+                            <p style={{ fontSize: '16px', color: 'var(--text)', fontWeight: 600 }}>{clase.email_entrenador}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '5px' }}>Duración</p>
+                            <p style={{ fontSize: '16px', color: 'var(--text)', fontWeight: 600 }}>{clase.duracion} minutos</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '14px', color: 'var(--muted)', marginBottom: '5px' }}>Fecha y Hora</p>
+                            <p style={{ fontSize: '16px', color: 'var(--text)', fontWeight: 600 }}>
+                              {new Date(clase.fecha_horario_al_que_va).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -352,13 +400,13 @@ const ClasesProgramadas: React.FC = () => {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', color: '#333', fontWeight: 600 }}>
-                  Duración
+                  Duración (en minutos)
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   value={duracion}
                   onChange={(e) => setDuracion(e.target.value)}
-                  placeholder="Ej: 60 minutos"
+                  placeholder="Ej: 60"
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -372,29 +420,10 @@ const ClasesProgramadas: React.FC = () => {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', color: '#333', fontWeight: 600 }}>
-                  Horario
+                  Fecha y Hora
                 </label>
                 <input
-                  type="time"
-                  value={horario}
-                  onChange={(e) => setHorario(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', color: '#333', fontWeight: 600 }}>
-                  Fecha
-                </label>
-                <input
-                  type="date"
+                  type="datetime-local"
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
                   style={{

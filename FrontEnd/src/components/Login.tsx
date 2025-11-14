@@ -8,6 +8,10 @@ interface LoginProps {
   onSwitchToRegister: () => void;
 }
 
+interface ValidationErrors {
+  [key: string]: string;
+}
+
 const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => {
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
@@ -16,6 +20,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => 
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [previousAccounts, setPreviousAccounts] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
   useEffect(() => {
     const prev = authUtils.getPreviousAccounts();
@@ -26,13 +31,54 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => 
     }
   }, []);
 
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@(gmail\.com|yahoo\.com\.ar)$/;
+    return emailRegex.test(email);
+  };
+
+  const isValidPassword = (password: string): boolean => {
+    return password.length >= 8;
+  };
+
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+
+    if (!formData.email.trim()) {
+      errors.email = 'El correo es requerido';
+    } else if (!isValidEmail(formData.email)) {
+      errors.email = 'Solo se aceptan emails de @gmail.com o @yahoo.com.ar';
+    }
+
+    if (!formData.contrasena) {
+      errors.contrasena = 'La contraseña es requerida';
+    } else if (!isValidPassword(formData.contrasena)) {
+      errors.contrasena = 'La contraseña debe tener mínimo 8 caracteres';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error for this field when user starts typing
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form first
+    if (!validateForm()) {
+      setMessage({ text: 'Por favor corrige los errores en el formulario', type: 'error' });
+      return;
+    }
+
     setIsLoading(true);
     setMessage({ text: 'Iniciando sesión...', type: 'info' });
 
@@ -43,6 +89,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => 
       authUtils.setToken(response.token);
       authUtils.setUserId(response.usuario.ID.toString());
       authUtils.setUsername(response.usuario.nombre);
+      authUtils.setUserRole(response.usuario.rol);
       authUtils.setLastEmail(formData.email);
 
       // Update previous accounts
@@ -58,8 +105,20 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => 
         onLoginSuccess();
       }, 800);
     } catch (error: any) {
+      let errorMessage = 'Error al iniciar sesión';
+      
+      if (error?.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        errorMessage = typeof detail === 'string' ? detail : JSON.stringify(detail);
+      } else if (error?.response?.data?.message) {
+        const message = error.response.data.message;
+        errorMessage = typeof message === 'string' ? message : JSON.stringify(message);
+      } else if (error?.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+
       setMessage({
-        text: error.response?.data?.detail || 'Error al iniciar sesión',
+        text: errorMessage,
         type: 'error'
       });
     } finally {
@@ -90,8 +149,13 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => 
             value={formData.email}
             onChange={handleInputChange}
             required
-            placeholder="tu@email.com"
+            placeholder="tu@gmail.com o tu@yahoo.com.ar"
           />
+          {validationErrors.email && (
+            <div style={{ color: '#ff7a7a', fontSize: '14px', marginTop: '4px' }}>
+              ⚠️ {validationErrors.email}
+            </div>
+          )}
         </div>
 
         <div className="form-group">
@@ -104,7 +168,16 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => 
             onChange={handleInputChange}
             required
             placeholder="••••••••"
+            minLength={8}
           />
+          {validationErrors.contrasena && (
+            <div style={{ color: '#ff7a7a', fontSize: '14px', marginTop: '4px' }}>
+              ⚠️ {validationErrors.contrasena}
+            </div>
+          )}
+            <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>
+            ℹ️ Mínimo 8 caracteres
+          </div>
         </div>
 
         <button type="submit" className="btn" disabled={isLoading}>
@@ -117,12 +190,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister }) => 
 
       {previousAccounts.length > 0 && (
         <div style={{ marginTop: '30px' }}>
-          <div style={{ fontSize: '15px', color: '#555', marginBottom: '8px' }}>Cuentas previas:</div>
+          <div style={{ fontSize: '15px', color: 'var(--muted)', marginBottom: '8px' }}>Cuentas previas:</div>
           {previousAccounts.map((email, index) => (
             <div
               key={index}
               style={{
-                background: '#f5f5f5',
+                background: 'rgba(255,255,255,0.02)',
                 padding: '8px 12px',
                 borderRadius: '6px',
                 marginBottom: '6px',
