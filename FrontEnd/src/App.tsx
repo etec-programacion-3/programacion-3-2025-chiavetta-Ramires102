@@ -5,26 +5,44 @@ import Register from './components/Register.tsx';
 import Dashboard from './components/Dashboard.tsx';
 import EjerciciosYClases from './components/EjerciciosYClases.tsx';
 import ClasesProgramadas from './components/ClasesProgramadas.tsx';
+import Usuarios from './components/Usuarios.tsx';
 import { authUtils } from './utils/auth.ts';
 import './App.css';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentView, setCurrentView] = useState<'login' | 'register'>('login');
 
   useEffect(() => {
+    // Verificar si hay token al cargar la app
+    const token = authUtils.getToken();
+    if (token) {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+    }
+
+    // Escuchar cambios en localStorage
+    const handleStorageChange = () => {
+      const newToken = authUtils.getToken();
+      setIsAuthenticated(!!newToken);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Si aún está cargando, mostrar un loader o nada
+  if (isAuthenticated === null) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '20px', color: '#667eea' }}>Cargando...</div>;
+  }
+
+  const handleLoginSuccess = () => {
+    // Verificar que el token se guardó correctamente
     const token = authUtils.getToken();
     if (token) {
       setIsAuthenticated(true);
     }
-  }, []);
-
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  const handleRegisterSuccess = (email: string) => {
-    setCurrentView('login');
   };
 
   const handleSwitchToRegister = () => {
@@ -38,40 +56,34 @@ const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Rutas públicas (cuando NO está autenticado) */}
-        {!isAuthenticated ? (
+        {isAuthenticated ? (
+          <>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/ejercicios-y-clases" element={<EjerciciosYClases />} />
+            <Route path="/clases-programadas" element={<ClasesProgramadas />} />
+            <Route path="/usuarios" element={<Usuarios />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </>
+        ) : (
           <>
             <Route 
               path="/" 
               element={
-                <div>
-                  {currentView === 'login' ? (
-                    <Login 
-                      onLoginSuccess={handleLoginSuccess}
-                      onSwitchToRegister={handleSwitchToRegister}
-                    />
-                  ) : (
-                    <Register 
-                      onRegisterSuccess={handleRegisterSuccess}
-                      onSwitchToLogin={handleSwitchToLogin}
-                    />
-                  )}
-                </div>
+                currentView === 'login' ? (
+                  <Login 
+                    onLoginSuccess={handleLoginSuccess}
+                    onSwitchToRegister={handleSwitchToRegister}
+                  />
+                ) : (
+                  <Register 
+                    onRegisterSuccess={() => handleSwitchToLogin()}
+                    onSwitchToLogin={handleSwitchToLogin}
+                  />
+                )
               } 
             />
-            {/* Redirige cualquier otra ruta al login */}
             <Route path="*" element={<Navigate to="/" replace />} />
-          </>
-        ) : (
-          /* Rutas privadas (cuando está autenticado) */
-          <>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/ejercicios-y-clases" element={<EjerciciosYClases />} />
-            <Route path="/clases-programadas" element={<ClasesProgramadas />} />
-            {/* Redirige la raíz al dashboard si está autenticado */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            {/* Redirige cualquier ruta no encontrada al dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </>
         )}
       </Routes>

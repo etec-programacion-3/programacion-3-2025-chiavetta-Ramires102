@@ -1,668 +1,460 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authUtils } from '../utils/auth.ts';
-import api, { authService } from '../services/api.ts';
+import api from '../services/api.ts';
+import { authUtils, normalizeRole } from '../utils/auth.ts';
+import { authService } from '../services/api.ts';
 
 const Dashboard: React.FC = () => {
-  const [userName, setUserName] = useState<string>('');
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState<string>('Usuario');
   const [userEmail, setUserEmail] = useState<string>('');
-  const [userRole, setUserRole] = useState<string>('');
-  const [profileImage, setProfileImage] = useState<string>(() => {
-    const savedImage = authUtils.getProfileImageUrl();
-    if (savedImage) {
-      const fullUrl = `${api.defaults.baseURL}${savedImage}`;
-      return `${fullUrl}?t=${new Date().getTime()}`;
-    }
-    return `${api.defaults.baseURL}/static/default-profile.png?t=${new Date().getTime()}`;
-  });
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [updateModalOpen, setUpdateModalOpen] = useState(false);
-  const [updateField, setUpdateField] = useState<string>('');
-  const [currentPassword, setCurrentPassword] = useState<string>('');
-  const [passwordVerified, setPasswordVerified] = useState<boolean>(false);
-  const [newValue, setNewValue] = useState<string>('');
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>('usuario');
+  const [profileImage, setProfileImage] = useState<string>('');
+  const [accountModalOpen, setAccountModalOpen] = useState<boolean>(false);
+  const [accountDetailsOpen, setAccountDetailsOpen] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [newName, setNewName] = useState<string>('');
+  const [newEmail, setNewEmail] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [verifyPasswordModalOpen, setVerifyPasswordModalOpen] = useState<boolean>(false);
+  const [verifyPassword, setVerifyPassword] = useState<string>('');
+  const [pendingFieldUpdate, setPendingFieldUpdate] = useState<'name' | 'email' | 'password' | null>(null);
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
 
-  const loadUserData = async () => {
+  const loadUser = useCallback(async () => {
     const userId = localStorage.getItem('userId');
     if (!userId) {
-      window.location.href = '/';
+      navigate('/');
       return;
     }
 
     try {
-      const response = await api.get(`/usuarios/${userId}`);
-      const user = response.data.usuario;
-      
-      setUserName(user.Nombre);
-      setUserEmail(user.Email);
-      setUserRole(user.Rol);
-      
-      let imageUrl = '';
-      if (user.imagen_perfil) {
-        imageUrl = `${api.defaults.baseURL}${user.imagen_perfil}`;
-      } else {
-        imageUrl = `${api.defaults.baseURL}/static/default-profile.png`;
-      }
+      const resp = await api.get(`/usuarios/${userId}`);
+      const user = resp.data.usuario || resp.data;
+      setUserName(user?.Nombre || 'Usuario');
+      setUserEmail(user?.Email || '');
+      setUserRole(user?.Rol || 'usuario');
+      authUtils.setUserRole(user?.Rol || 'usuario');
 
-      const timestamp = new Date().getTime();
-      const finalImageUrl = `${imageUrl}?t=${timestamp}`;
-
-      authUtils.setProfileImageUrl(user.imagen_perfil || '');
-      setProfileImage(finalImageUrl);
-    } catch (error) {
-      console.error('Error loading user data:', error);
+      const base = api.defaults?.baseURL || '';
+      if (user?.imagen_perfil) setProfileImage(`${base}${user.imagen_perfil}`);
+      else setProfileImage(`${base}/static/default-profile.png`);
+    } catch (err) {
+      console.error('Error cargando usuario', err);
     }
+  }, [navigate]);
+
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  const navigateTo = (path: string) => navigate(path);
+
+  const handleLogout = () => {
+    authUtils.clearAll();
+    window.location.href = '/';
   };
 
-  const handleProfileImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // helper actions that operate on the current user
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const handleProfileImageChange = async (file: File | null) => {
+    if (!file) return;
     const userId = localStorage.getItem('userId');
     if (!userId) return;
 
     try {
-      const imageUrl = await authService.uploadProfileImage(parseInt(userId), file);
-      const fullImageUrl = `${api.defaults.baseURL}${imageUrl}`;
-      authUtils.setProfileImageUrl(imageUrl);
-      
-      const timestamp = new Date().getTime();
-      const finalUrl = `${fullImageUrl}?t=${timestamp}`;
+      setIsUploading(true);
+      const imagePath = await authService.uploadProfileImage(parseInt(userId), file);
+      const base = api.defaults?.baseURL || '';
+      const finalUrl = `${base}${imagePath}?t=${Date.now()}`;
       setProfileImage(finalUrl);
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al subir la imagen');
-      await loadUserData();
+      authUtils.setProfileImageUrl(imagePath);
+      alert('Imagen de perfil actualizada');
+    } catch (err) {
+      console.error('Error al subir imagen', err);
+      alert('Error al subir imagen');
+    } finally {
+      setIsUploading(false);
     }
-  };
-
-  const handleUpdateField = (field: string) => {
-    setUpdateField(field);
-    setCurrentPassword('');
-    setPasswordVerified(false);
-    setNewValue('');
-    setUpdateModalOpen(true);
   };
 
   const handleDeleteAccount = async () => {
     const userId = localStorage.getItem('userId');
     if (!userId) return;
+    const confirmed = window.confirm('¿Estás seguro que quieres eliminar tu cuenta? Esta acción no se puede deshacer.');
+    if (!confirmed) return;
 
     try {
       await authService.deleteUser(parseInt(userId));
-      localStorage.clear();
+      authUtils.clearAll();
       window.location.href = '/';
-    } catch (error) {
-      console.error('Error deleting account:', error);
-      alert('Error al eliminar la cuenta');
+    } catch (err) {
+      console.error('Error al eliminar cuenta', err);
+      alert('Error al eliminar cuenta');
     }
   };
 
-  const handleVerifyPassword = async () => {
+  const handleMakeAdmin = async () => {
+    const ADMIN_PASSWORD = '123456789';
+    const attempt = window.prompt('Ingrese la contraseña de administrador:');
+    if (attempt !== ADMIN_PASSWORD) {
+      alert('Contraseña incorrecta');
+      return;
+    }
+
     const userId = localStorage.getItem('userId');
-    if (!userId || !currentPassword) return;
+    if (!userId) return;
+    try {
+      await authService.updateUser(parseInt(userId), { rol: 'admin' });
+      authUtils.setUserRole('admin');
+      setUserRole('admin');
+      alert('Ahora eres admin');
+    } catch (err) {
+      console.error('Error al asignar admin', err);
+      alert('Error al asignar rol admin');
+    }
+  };
+
+  const handleUpdateField = async (field: 'name' | 'email' | 'password') => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
 
     try {
-      const isValid = await authService.verifyPassword(parseInt(userId), { contrasena: currentPassword });
-      if (isValid) {
-        // Marca la contraseña como verificada para avanzar al siguiente paso
-        setPasswordVerified(true);
-      } else {
-        alert('Contraseña incorrecta');
+      const updateData: any = {};
+      
+      if (field === 'name' && newName) {
+        updateData.nombre = newName;
+      } else if (field === 'email' && newEmail) {
+        updateData.email = newEmail;
+      } else if (field === 'password' && newPassword) {
+        updateData.contrasena = newPassword;
       }
-    } catch (error) {
-      console.error('Error verifying password:', error);
-      alert('Error al verificar la contraseña');
+
+      if (Object.keys(updateData).length === 0) {
+        alert('Por favor ingresa un nuevo valor');
+        return;
+      }
+
+      await authService.updateUser(parseInt(userId), updateData);
+      
+      if (field === 'name' && newName) setUserName(newName);
+      if (field === 'email' && newEmail) setUserEmail(newEmail);
+      
+      setEditingField(null);
+      setNewName('');
+      setNewEmail('');
+      setNewPassword('');
+      alert('Datos actualizados correctamente');
+      loadUser();
+    } catch (err) {
+      console.error('Error al actualizar datos', err);
+      alert('Error al actualizar datos');
     }
   };
 
-  const handleUpdateValue = async () => {
+  const handleVerifyPasswordForUpdate = async () => {
     const userId = localStorage.getItem('userId');
-    if (!userId || !newValue) return;
+    if (!userId || !verifyPassword) {
+      alert('Por favor ingresa tu contraseña');
+      return;
+    }
 
     try {
-      await authService.updateUser(parseInt(userId), { [updateField]: newValue });
-      await loadUserData();
-        setUpdateModalOpen(false);
-        setPasswordVerified(false);
-        setCurrentPassword('');
-        setNewValue('');
-        setUpdateField('');
-        alert('Datos actualizados correctamente');
-    } catch (error) {
-      console.error('Error updating value:', error);
-      alert('Error al actualizar los datos');
+      const isValid = await authService.verifyPassword(parseInt(userId), { contrasena: verifyPassword });
+      if (!isValid) {
+        alert('Contraseña incorrecta');
+        setVerifyPassword('');
+        return;
+      }
+
+      // Si contraseña es correcta, abrimos el campo para editar
+      if (pendingFieldUpdate === 'name') {
+        setEditingField('name');
+        setNewName(userName);
+      } else if (pendingFieldUpdate === 'email') {
+        setEditingField('email');
+        setNewEmail(userEmail);
+      } else if (pendingFieldUpdate === 'password') {
+        setEditingField('password');
+        setNewPassword('');
+      }
+
+      setVerifyPasswordModalOpen(false);
+      setVerifyPassword('');
+      setPendingFieldUpdate(null);
+    } catch (err) {
+      console.error('Error al verificar contraseña', err);
+      alert('Error al verificar contraseña');
     }
   };
 
-  const handleLogout = () => {
-    authUtils.clearAll();
-    window.location.reload();
+  const startFieldUpdate = (field: 'name' | 'email' | 'password') => {
+    setPendingFieldUpdate(field);
+    setVerifyPasswordModalOpen(true);
   };
 
-  const navigate = useNavigate();
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
-      {/* Overlay */}
-      {(sidebarOpen || accountModalOpen) && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 999
-          }}
-          onClick={() => {
-            setSidebarOpen(false);
-            setAccountModalOpen(false);
-          }}
-        />
+    <div style={{ minHeight: '100vh', background: 'var(--bg-gradient)', color: 'var(--text)', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
+      <header style={{ padding: '18px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--overlay)', backdropFilter: 'blur(6px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <h1 style={{ margin: 0, fontSize: 22 }}>Dashboard</h1>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontWeight: 700 }}>{userName}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 12 }}>{normalizeRole(userRole)}</div>
+          </div>
+          <img 
+            src={profileImage} 
+            alt="perfil" 
+            onClick={() => setAccountModalOpen(true)}
+            style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.06)', cursor: 'pointer' }} 
+          />
+        </div>
+      </header>
+
+      <main style={{ padding: '40px 500px', maxWidth: 1800, width: '100%', margin: '0 auto' }}>
+        <div style={{ display: 'flex', gap: 28, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ background: 'var(--card-bg)', padding: 20, borderRadius: 12, flex: '1', minWidth: 320, maxWidth: 400 }}>
+            <h2 style={{ color: 'var(--accent)', marginTop: 0 }}>Clases Programadas</h2>
+            <p style={{ color: 'var(--muted)' }}>Ver y administrar las clases disponibles.</p>
+            <button onClick={() => navigateTo('/clases-programadas')} className="btn" style={{ marginTop: 12 }}>Ir</button>
+          </div>
+
+          <div style={{ background: 'var(--card-bg)', padding: 20, borderRadius: 12, flex: '1', minWidth: 320, maxWidth: 400 }}>
+            <h2 style={{ color: 'var(--accent)', marginTop: 0 }}>Ejercicios y Clases</h2>
+            <p style={{ color: 'var(--muted)' }}>Explorar ejercicios y contenidos.</p>
+            <button onClick={() => navigateTo('/ejercicios-y-clases')} className="btn" style={{ marginTop: 12 }}>Ir</button>
+          </div>
+        </div>
+      </main>
+
+      {/* Right slide-over panel for account actions */}
+      {accountModalOpen && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 990 }} onClick={() => setAccountModalOpen(false)} />
+          <aside style={{ position: 'fixed', right: 0, top: 0, height: '100vh', width: 400, maxWidth: '90%', background: 'var(--card-bg)', boxShadow: '-8px 0 30px rgba(0,0,0,0.4)', zIndex: 1000, padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setAccountModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+            </div>
+
+            {/* Profile image centered */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: -10 }}>
+              <img src={profileImage} alt="perfil" style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.1)' }} />
+            </div>
+
+            {/* User name with role icon */}
+            <div style={{ textAlign: 'center', marginTop: -8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 20, color: normalizeRole(userRole) === 'admin' ? '#FFD700' : 'var(--text)' }}>
+                  {userName}
+                </span>
+                {normalizeRole(userRole) === 'admin' && <span style={{ fontSize: 20 }}>👑</span>}
+                {normalizeRole(userRole) === 'entrenador' && <span style={{ fontSize: 20 }}>💪</span>}
+              </div>
+            </div>
+
+            {/* Welcome message */}
+            <div style={{ textAlign: 'center', paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              <h3 style={{ margin: 0, color: 'var(--text)', fontSize: 18 }}>Bienvenido, {userName}</h3>
+              <p style={{ color: 'var(--muted)', marginTop: 8, fontSize: 14 }}>Email: {userEmail}</p>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button className="btn" onClick={() => { setAccountModalOpen(false); setAccountDetailsOpen(true); }}>Mi cuenta</button>
+              <button className="btn" onClick={() => { setAccountModalOpen(false); navigateTo('/usuarios'); }} style={{ display: normalizeRole(userRole) === 'admin' ? 'block' : 'none' }}>Usuarios</button>
+              <button className="btn btn-secondary" onClick={handleLogout}>Cerrar sesión</button>
+            </div>
+
+            <div style={{ marginTop: 'auto', fontSize: 12, color: 'var(--muted)', textAlign: 'center', paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div>Soporte · Ajustes · Versión 1.0</div>
+            </div>
+          </aside>
+        </>
       )}
 
-      {/* Account Modal */}
-      {accountModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'white',
-          padding: '30px',
-          borderRadius: '12px',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
-          zIndex: 1001,
-          maxWidth: '500px',
-          width: '90%'
-        }}>
-          <button
-            style={{
-              position: 'absolute',
-              top: '15px',
-              right: '15px',
-              background: 'none',
-              border: 'none',
-              fontSize: '28px',
-              color: '#ccc',
-              cursor: 'pointer'
-            }}
-            onClick={() => setAccountModalOpen(false)}
-          >
-            ×
-          </button>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#667eea', marginBottom: '25px', borderBottom: '2px solid #667eea', paddingBottom: '10px' }}>
-            👤 Mi Cuenta
-          </div>
+      {/* Center modal: account details */}
+      {accountDetailsOpen && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1010 }} onClick={() => setAccountDetailsOpen(false)} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1011, width: '90%', maxWidth: 600 }}>
+            <div style={{ background: '#1a1a2e', padding: 28, borderRadius: 16, boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Mi Cuenta</h3>
+                <button onClick={() => setAccountDetailsOpen(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--muted)' }}>✕</button>
+              </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px' }}>
-            <img 
-              src={profileImage} 
-              alt="Perfil" 
-              data-profile-image="true"
-              style={{ width: '100px', height: '100px', borderRadius: '50%', border: '4px solid #667eea', marginBottom: '10px', objectFit: 'cover' }} 
-            />
-            <input
-              type="file"
-              id="imageInput"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleProfileImageChange}
-            />
-            <button
-              onClick={() => document.getElementById('imageInput')?.click()}
-              style={{ background: '#4ade80', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Cambiar Imagen
-            </button>
-          </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+                <img src={profileImage} alt="perfil" style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.1)' }} />
+                <div>
+                  <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleProfileImageChange(e.target.files?.[0] || null)} />
+                  <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>{isUploading ? 'Subiendo...' : 'Cambiar imagen'}</button>
+                </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px dashed #eee' }}>
-            <span style={{ fontWeight: 600, color: '#333', width: '120px' }}>Nombre:</span>
-            <span style={{ flexGrow: 1, color: '#666', marginRight: '15px' }}>{userName}</span>
-            <button
-              onClick={() => handleUpdateField('nombre')}
-              style={{ background: '#667eea', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Actualizar
-            </button>
-          </div>
+                <div style={{ width: '100%', marginTop: 12 }}>
+                  {/* Nombre field */}
+                  <div style={{ marginBottom: 20, padding: 16, background: 'rgba(197, 54, 54, 0.03)', borderRadius: 8 }}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between'}}>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px dashed #eee' }}>
-            <span style={{ fontWeight: 600, color: '#333', width: '120px' }}>Email:</span>
-            <span style={{ flexGrow: 1, color: '#666', marginRight: '15px' }}>{userEmail}</span>
-            <button
-              onClick={() => handleUpdateField('email')}
-              style={{ background: '#667eea', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Actualizar
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px dashed #eee' }}>
-            <span style={{ fontWeight: 600, color: '#333', width: '120px' }}>Contraseña:</span>
-            <span style={{ flexGrow: 1, color: '#666', marginRight: '15px' }}>••••••••</span>
-            <button
-              onClick={() => handleUpdateField('contrasena')}
-              style={{ background: '#667eea', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Actualizar
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: 'none' }}>
-            <span style={{ fontWeight: 600, color: '#333', width: '120px' }}>Rol:</span>
-            <span style={{ flexGrow: 1, color: '#666', marginRight: '15px' }}>{userRole}</span>
-          </div>
-
-          <div style={{ marginTop: '25px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
-            <button style={{ background: '#f97316', color: 'white', width: '100%', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600, marginBottom: '10px' }}>
-              👑 Soy Admin
-            </button>
-            <button
-              onClick={() => setDeleteModalOpen(true)}
-              style={{ background: '#ef4444', color: 'white', width: '100%', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: 600 }}
-            >
-              🗑️ Borrar Cuenta
-            </button>
-          </div>
-
-          {/* Modal de Actualización */}
-          {updateModalOpen && (
-            <div style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'white',
-              padding: '30px',
-              borderRadius: '12px',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
-              zIndex: 1002,
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ marginBottom: '20px' }}>
-                {passwordVerified ? 'Nuevo Valor' : 'Verificar Contraseña'}
-              </h3>
-
-              {!passwordVerified ? (
-                <>
-                  <input
-                    type="password"
-                    placeholder="Contraseña actual"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      marginBottom: '15px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px'
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                    <button
-                      onClick={() => {
-                        setUpdateModalOpen(false);
-                        setPasswordVerified(false);
-                        setCurrentPassword('');
-                        setNewValue('');
-                      }}
-                      style={{
-                        padding: '8px 16px',
-                        background: '#e0e0e0',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleVerifyPassword}
-                      style={{
-                        padding: '8px 16px',
-                        background: '#667eea',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Verificar
-                    </button>
+                      <label style={{ fontWeight: 600, color: 'var(--muted)', fontSize: 13 }}>Nombre</label>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '4px 12px', fontSize: 12 }}
+                        onClick={() => {
+                          if (editingField === 'name') {
+                            handleUpdateField('name'); 
+                          } else {
+                            startFieldUpdate('name');
+                          }
+                        }}
+                      >
+                        {editingField === 'name' ? 'Guardar' : 'Actualizar'}
+                      </button>
+                    </div>
+                    {editingField === 'name' ? (
+                      <input 
+                        type="text" 
+                        value={newName} 
+                        onChange={(e) => setNewName(e.target.value)}
+                        style={{ width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'var(--text)' }}
+                      />
+                    ) : (
+                      <div style={{ fontWeight: 600, fontSize: 16 }}>{userName}</div>
+                    )}
                   </div>
-                </>
-              ) : (
-                <>
-                  <input
-                    type={updateField === 'contrasena' ? 'password' : 'text'}
-                    placeholder={`Nuevo ${updateField}`}
-                    value={newValue}
-                    onChange={(e) => setNewValue(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      marginBottom: '15px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px'
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                    <button
-                      onClick={() => {
-                        // Volver al paso de verificación
-                        setPasswordVerified(false);
-                        setCurrentPassword('');
-                        setNewValue('');
-                      }}
-                      style={{
-                        padding: '8px 16px',
-                        background: '#e0e0e0',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Atrás
-                    </button>
-                    <button
-                      onClick={handleUpdateValue}
-                      style={{
-                        padding: '8px 16px',
-                        background: '#667eea',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Actualizar
-                    </button>
+
+                  {/* Email field */}
+                  <div style={{ marginBottom: 20, padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between'}}>
+
+                      <label style={{ fontWeight: 600, color: 'var(--muted)', fontSize: 13 }}>Email</label>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '4px 12px', fontSize: 12 }}
+                        onClick={() => {
+                          if (editingField === 'email') {
+                            handleUpdateField('email');
+                          } else {
+                            startFieldUpdate('email');
+                          }
+                        }}
+                      >
+                        {editingField === 'email' ? 'Guardar' : 'Actualizar'}
+                      </button>
+                    </div>
+                    {editingField === 'email' ? (
+                      <input 
+                        type="email" 
+                        value={newEmail} 
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        style={{ width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'var(--text)' }}
+                      />
+                    ) : (
+                      <div style={{ fontWeight: 600, fontSize: 16 }}>{userEmail}</div>
+                    )}
                   </div>
-                </>
-              )}
+
+                  {/* Password field */}
+                  <div style={{ marginBottom: 20, padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between'}}>
+                      <label style={{ fontWeight: 600, color: 'var(--muted)', fontSize: 13 }}>Contraseña</label>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '4px 12px', fontSize: 12 }}
+                        onClick={() => {
+                          if (editingField === 'password') {
+                            handleUpdateField('password');
+                          } else {
+                            startFieldUpdate('password');
+                          }
+                        }}
+                      >
+                        {editingField === 'password' ? 'Guardar' : 'Actualizar'}
+                      </button>
+                    </div>
+                    {editingField === 'password' ? (
+                      <input 
+                        type="password" 
+                        value={newPassword} 
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Nueva contraseña"
+                        style={{ width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'var(--text)' }}
+                      />
+                    ) : (
+                      <div style={{ fontWeight: 600, fontSize: 16 }}>••••••••</div>
+                    )}
+                  </div>
+
+                  {/* Rol field - no editable */}
+                  <div style={{ marginBottom: 20, padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontWeight: 600, color: 'var(--muted)', fontSize: 13 }}>Rol</label>
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: normalizeRole(userRole) === 'admin' ? '#FFD700' : 'var(--text)' }}>
+                        {normalizeRole(userRole)}
+                      </span>
+                      {normalizeRole(userRole) === 'admin' && <span>👑</span>}
+                      {normalizeRole(userRole) === 'entrenador' && <span>💪</span>}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                    <button className="btn" onClick={handleMakeAdmin}>Soy Admin</button>
+                    <button className="btn btn-danger" onClick={handleDeleteAccount}>Eliminar cuenta</button>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+        </>
+      )}
 
-          {/* Modal de Confirmación de Borrado */}
-          {deleteModalOpen && (
-            <div style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'white',
-              padding: '30px',
-              borderRadius: '12px',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
-              zIndex: 1002,
-              width: '90%',
-              maxWidth: '400px'
-            }}>
-              <h3 style={{ marginBottom: '20px' }}>¿Estás seguro?</h3>
-              <p style={{ marginBottom: '20px' }}>Esta acción no se puede deshacer.</p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button
-                  onClick={() => setDeleteModalOpen(false)}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#e0e0e0',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
+      {/* Modal de verificación de contraseña */}
+      {verifyPasswordModalOpen && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1020 }} onClick={() => { setVerifyPasswordModalOpen(false); setVerifyPassword(''); }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1021, width: '90%', maxWidth: 400 }}>
+            <div style={{ background: 'var(--card-bg)', padding: 24, borderRadius: 12, boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: 20, fontWeight: 700 }}>Verificar identidad</h3>
+              <p style={{ color: 'var(--muted)', marginBottom: 16 }}>Ingresa tu contraseña actual para continuar</p>
+              
+              <input 
+                type="password" 
+                value={verifyPassword} 
+                onChange={(e) => setVerifyPassword(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleVerifyPasswordForUpdate();
+                  }
+                }}
+                placeholder="Contraseña actual"
+                style={{ width: '100%', padding: 12, marginBottom: 16, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'var(--text)', fontSize: 14 }}
+              />
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => { setVerifyPasswordModalOpen(false); setVerifyPassword(''); }}
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={handleDeleteAccount}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
+                <button 
+                  className="btn" 
+                  onClick={handleVerifyPasswordForUpdate}
                 >
-                  Eliminar Cuenta
+                  Verificar
                 </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        </>
       )}
-
-      {/* Header */}
-      <div style={{
-        background: 'rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(10px)',
-        padding: '20px 40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ fontSize: '32px', fontWeight: 'bold', color: 'white', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)' }}>
-          💪 TecnoGym
-        </div>
-        <div
-          style={{
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            objectFit: 'cover',
-            border: '2px solid #fff',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
-          }}
-          onClick={() => setSidebarOpen(true)}
-        >
-          <img 
-            src={profileImage} 
-            alt="Perfil" 
-            data-profile-image="true"
-            style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} 
-          />
-        </div>
-      </div>
-
-      {/* Sidebar */}
-      <div style={{
-        position: 'fixed',
-        right: sidebarOpen ? '0' : '-400px',
-        top: '0',
-        width: '400px',
-        height: '100vh',
-        background: 'white',
-        boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.2)',
-        transition: 'right 0.3s ease',
-        zIndex: 1000,
-        overflowY: 'auto'
-      }}>
-        <button
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            background: 'rgba(255, 255, 255, 0.2)',
-            border: 'none',
-            color: 'white',
-            fontSize: '24px',
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            cursor: 'pointer'
-          }}
-          onClick={() => setSidebarOpen(false)}
-        >
-          ×
-        </button>
-
-        <div style={{
-          position: 'relative',
-          height: '200px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            position: 'relative',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            padding: '20px 0'
-          }}>
-            <img 
-              src={profileImage} 
-              alt="Perfil" 
-              data-profile-image="true"
-              style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid white', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', margin: '0 auto' }} 
-            />
-            <div style={{ marginTop: '12px', color: 'white', fontWeight: 600, fontSize: '18px', textAlign: 'center', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {userName}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ padding: '30px' }}>
-          <div style={{ padding: '15px', margin: '10px 0', background: '#f5f5f5', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }} onClick={() => { setAccountModalOpen(true); setSidebarOpen(false); }}>
-            <span style={{ fontSize: '24px' }}>👤</span>
-            <span>Mi Cuenta</span>
-          </div>
-
-          <div style={{ padding: '15px', margin: '10px 0', background: '#f5f5f5', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }} onClick={handleLogout}>
-            <span style={{ fontSize: '24px' }}>🚪</span>
-            <span>Cerrar Sesión</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content - Navigation Cards */}
-      <div style={{ padding: '60px 40px', maxWidth: '1200px', margin: '0 auto' }}>
-        <h1 style={{ color: 'white', fontSize: '42px', textAlign: 'center', marginBottom: '50px', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)' }}>
-          ¡Bienvenido, {userName}!
-        </h1>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-          {/* Ejercicios y Clases */}
-          <div
-            onClick={() => navigate('/ejercicios-y-clases')}
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '40px',
-              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-              cursor: 'pointer',
-              transition: 'transform 0.3s, box-shadow 0.3s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px)';
-              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
-            }}
-          >
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>💪</div>
-            <h2 style={{ fontSize: '24px', color: '#667eea', marginBottom: '10px', fontWeight: 600 }}>
-              Ejercicios y Clases
-            </h2>
-            <p style={{ color: '#666', fontSize: '16px' }}>
-              Explora rutinas de ejercicios y consulta el calendario de clases disponibles
-            </p>
-          </div>
-
-          {/* Clases Programadas */}
-          <div
-            onClick={() => navigate('/clases-programadas')}
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '40px',
-              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-              cursor: 'pointer',
-              transition: 'transform 0.3s, box-shadow 0.3s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px)';
-              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
-            }}
-          >
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📅</div>
-            <h2 style={{ fontSize: '24px', color: '#667eea', marginBottom: '10px', fontWeight: 600 }}>
-              Clases Programadas
-            </h2>
-            <p style={{ color: '#666', fontSize: '16px' }}>
-              {userRole === 'Admin' ? 'Gestiona y programa nuevas clases' : 'Busca y reserva clases disponibles'}
-            </p>
-          </div>
-
-          {/* Tienda */}
-          <div
-            onClick={() => navigate('/tienda')}
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '40px',
-              boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-              cursor: 'pointer',
-              transition: 'transform 0.3s, box-shadow 0.3s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px)';
-              e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
-            }}
-          >
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🛒</div>
-            <h2 style={{ fontSize: '24px', color: '#667eea', marginBottom: '10px', fontWeight: 600 }}>
-              Tienda
-            </h2>
-            <p style={{ color: '#666', fontSize: '16px' }}>
-              Adquiere productos, suplementos y equipamiento deportivo
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

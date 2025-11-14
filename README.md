@@ -38,3 +38,6 @@ sqlite3
 
 31/10/25   
     logre hacer la pagina en su mayoria, fnuciona los botones para registrarse y logearse, te podes poner una imgen de tu compu en tu cuenta y cerrar session correctamente.
+
+1 - 14/11/25
+    estube terminando todas las funcionalidades haciendo que quede todo listo.

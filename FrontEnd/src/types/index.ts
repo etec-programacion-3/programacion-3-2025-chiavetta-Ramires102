@@ -31,6 +31,7 @@ export interface UpdateUserRequest {
   email?: string;
   contrasena?: string;
   edad?: number;
+  rol?: string;
 }
 
 // Interfaz para verificar contraseña
